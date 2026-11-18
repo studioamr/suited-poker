@@ -15,6 +15,10 @@ body{overflow-x:hidden;background:radial-gradient(1100px 520px at 60% -10%,rgba(
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}input,select{font:inherit;color:inherit;background:none;border:0;outline:none}a{color:inherit;text-decoration:none}
 .m{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
 .disp{font-family:Unbounded,Manrope,sans-serif}
+.sol{width:16px;height:16px;border-radius:50%;flex:none;display:inline-block;background:linear-gradient(135deg,#9945ff,#14f195);box-shadow:0 0 10px rgba(20,241,149,.35);position:relative}
+.sol:after{content:"";position:absolute;inset:28% 22%;background:linear-gradient(#fff,#fff) 0 0/100% 18% no-repeat,linear-gradient(#fff,#fff) 0 50%/100% 18% no-repeat,linear-gradient(#fff,#fff) 0 100%/100% 18% no-repeat;transform:skewX(-18deg);opacity:.95}
+.bi-amt{display:flex;align-items:center;gap:12px;font:700 38px Unbounded;letter-spacing:-.03em;margin:10px 0 6px}.bi-amt .sol{width:32px;height:32px}
+.txr{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}.txr .tt{font:800 10.5px Manrope;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:6px}.txr .tt.out{background:rgba(255,107,107,.12);color:#ff9a9a}.txr .tt.in{background:rgba(43,212,125,.12);color:var(--g)}.txr .dim2{color:var(--mut);font-size:12px}.txr a{color:var(--g)}
 .coin{width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#d9ffe9,#2bd47d 45%,#0b5a33);box-shadow:0 0 10px rgba(43,212,125,.55),inset 0 -2px 3px rgba(0,0,0,.35);flex:none;display:inline-block}
 .logo{display:flex;align-items:center;gap:10px;font:700 18px Unbounded;letter-spacing:.16em}
 .spade{width:24px;height:24px;color:var(--g);filter:drop-shadow(0 0 10px rgba(43,212,125,.55))}
@@ -215,14 +219,14 @@ body.inroom .top{display:none}
  </nav>
  <span class="online"><i></i><b data-online>—</b> online now</span>
  <span class="sp"></span>
- <div class="wal"><span class="b"><i class="coin"></i><span id="coins">0</span></span><button data-bonus>daily bonus</button></div>
+ <div class="wal"><span class="b"><i class="sol"></i><span id="coins">—</span></span></div>
  <button class="wbtn" id="wbtn" data-wallet>connect wallet</button>
  <div class="me2"><span class="lv" id="mylv">1</span><a href="#me"><span class="ava" id="myava" style="width:38px;height:38px"></span></a></div>
 </header>
 
 <main class="main">
 <section class="page" id="pg-play">
- <div class="hero" style="background:linear-gradient(90deg,#040706 25%,rgba(4,7,6,.55) 60%,rgba(4,7,6,.2)),url(img/cash.jpg) center/cover"><div class="k">cash games · texas hold'em · 9 seats</div><h1>pick your table.<br>play your tier.</h1><p>from Classic to Double Diamond. every tier raises the blinds and the stakes. win coins, level up, unlock the next card.</p>
+ <div class="hero" style="background:linear-gradient(90deg,#040706 25%,rgba(4,7,6,.55) 60%,rgba(4,7,6,.2)),url(img/cash.jpg) center/cover"><div class="k">cash games · texas hold'em · 9 seats</div><h1>pick your table.<br>play your tier.</h1><p>from 0.05 SOL to Double Diamond. pick the card you want to play, pay the buy-in from your wallet and take a seat.</p>
   <div class="cta"><button class="btn" data-quick="0">quick seat</button><a class="btn gh" href="#tourneys">tournaments</a></div></div>
  <h2 class="sec"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>tables <span>tap a card to sit</span></h2>
  <div class="venues" id="venues"></div>
@@ -236,7 +240,7 @@ body.inroom .top{display:none}
 </section>
 
 <section class="page" id="pg-tourneys">
- <div class="hero" style="background:linear-gradient(90deg,#040706 25%,rgba(4,7,6,.55) 60%,rgba(4,7,6,.2)),url(img/sng.jpg) center/cover"><div class="k">sit &amp; go</div><h1>nine players.<br>one winner.</h1><p>everyone starts even. blinds rise every few minutes. the top three split the prize pool.</p></div>
+ <div class="hero" style="background:linear-gradient(90deg,#040706 25%,rgba(4,7,6,.55) 60%,rgba(4,7,6,.2)),url(img/sng.jpg) center/cover"><div class="k">sit &amp; go</div><h1>nine players.<br>one winner.</h1><p>pay the entry in SOL, everyone starts even, blinds rise every few minutes. the top three split the prize pool.</p></div>
  <h2 class="sec"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>open now <span id="tN"></span></h2>
  <div class="tl" id="liveT"><div class="empty">no tournaments open. create one below.</div></div>
  <h2 class="sec"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>create a tournament</h2>
@@ -248,7 +252,7 @@ body.inroom .top{display:none}
    <label class="f"><span>who can join</span><select class="in" id="tPub"><option value="1">anyone</option><option value="0">invite only</option></select></label></div>
    <label class="f"><span>tournament name</span><input class="in" id="tName" maxlength="30" placeholder="sunday major"></label>
    <button class="btn w" data-mkt>create tournament</button></div>
-  <div class="box"><h3>prize split</h3><p>the prize pool is every entry added together.</p>
+  <div class="box"><h3>prize split</h3><p>the prize pool is every entry added together, minus a 5% house fee, paid in SOL.</p>
    <div class="pay"><div><b>50%</b><span>1st</span></div><div><b>30%</b><span>2nd</span></div><div><b>20%</b><span>3rd</span></div></div>
    <p style="margin:12px 0 0;font-size:12px">5 or 6 players: 65% / 35%. 4 or fewer: winner takes all.</p></div>
  </div>
@@ -260,9 +264,9 @@ body.inroom .top{display:none}
    <div style="font-size:12px;color:var(--mut);margin:-4px 0 12px">tap the photo to change it</div>
    <input class="in" id="pName" maxlength="16" placeholder="your name" style="text-align:center;font-weight:800;font-size:16px">
    <div class="xp"><i id="pXp"></i></div><div class="m" style="font-size:12px;color:var(--mut)" id="pLv"></div>
-   <button class="btn gh w" style="margin-top:16px" data-bonus>claim daily bonus</button></div>
+   <button class="btn gh w" style="margin-top:16px" data-wallet>wallet</button></div>
   <div><div class="stats" id="pStats"></div><h2 class="sec">your road</h2><div class="road" id="road"></div>
-   <div class="box" style="margin-top:14px"><h3>play coins</h3><p style="margin:0">coins are for play only. they can’t be bought, sold or cashed out.</p></div></div>
+   <div class="box" style="margin-top:14px"><h3>transactions</h3><p>buy-ins, cash-outs and prizes on Solana.</p><div id="pTx"></div></div></div>
  </div>
 </section>
 </main>
@@ -290,6 +294,7 @@ body.inroom .top{display:none}
 <div class="over" id="over"><div class="mi" id="overIn"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.80.0/dist/umd/supabase.min.js"></script>
+<script src="pricing.js"></script>
 <script src="engine.js"></script>
 <script src="game.js"></script>
 
