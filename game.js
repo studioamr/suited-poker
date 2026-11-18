@@ -16,7 +16,8 @@ const VENUES=[
  {room:'Platinum',sb:500,bb:1000,buy:50000,lvl:10,felt:'#14242c',glow:'#bfe3f2',metal:'linear-gradient(135deg,#f4fbff,#b9cdd8 45%,#7d93a1)',ink:'#0f1a20'},
  {room:'Black',sb:2500,bb:5000,buy:250000,lvl:15,felt:'#0b0b0c',glow:'#e9e9ea',metal:'linear-gradient(135deg,#3a3a3f,#111113 50%,#000)',ink:'#f2f2f3'},
  {room:'Diamond',sb:10000,bb:20000,buy:1000000,lvl:20,felt:'#0a2a3a',glow:'#7fd8ff',metal:'linear-gradient(135deg,#e4f8ff,#7fd0f2 40%,#2d7fb0)',ink:'#05202e'},
- {room:'Double Diamond',sb:50000,bb:100000,buy:5000000,lvl:25,felt:'#1a1236',glow:'#c9a6ff',metal:'linear-gradient(135deg,#ffe3fb,#c8a8ff 35%,#7c6cff 65%,#3c2f9e)',ink:'#170d33'}];
+ {room:'Double Diamond',sb:50000,bb:100000,buy:5000000,lvl:25,felt:'#1a1236',glow:'#c9a6ff',metal:'linear-gradient(135deg,#ffe3fb,#c8a8ff 35%,#7c6cff 65%,#3c2f9e)',ink:'#170d33'},
+ {room:'Infinite',sb:250000,bb:500000,buy:25000000,lvl:0,felt:'#0d0b07',glow:'#e7c873',metal:'linear-gradient(135deg,#2a2418,#0a0907 45%,#000 60%,#3a2f16)',ink:'#e7c873',custom:true}];
 
 const ENTRIES=PRICING.entries;
 // fichas ↔ SOL: cada mesa guarda cuánto SOL vale su buy-in (G.sol) y cuántas fichas da (G.buyin)
@@ -90,10 +91,10 @@ let lastLobbyTrack=0;function announce(force){if(!G||!HOST||!G.public)return;if(
 // ---------- lobby ----------
 const CODEC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>CODEC[b%CODEC.length]).join('');
 const SPADE='<svg viewBox="0 0 24 24"><path d="M12 2C9 6 4 9 4 13.2A4.3 4.3 0 0011.3 16c-.3 2.2-1.2 3.9-2.8 5h7c-1.6-1.1-2.5-2.8-2.8-5A4.3 4.3 0 0020 13.2C20 9 15 6 12 2z" fill="currentColor"/></svg>';
-function drawVenues(){$('#venues').innerHTML=VENUES.map((v,i)=>{const sol=PRICING.tiers[i].sol,u=PRICING.usd(sol),n=Object.values(LOBBY).filter(t=>t.venue===i&&t.mode!=='sng').reduce((a,t)=>a+t.seated,0);return`<div class="tier" data-quick="${i}" style="--metal:${v.metal};--ink:${v.ink};--glow:${v.glow};--felt:${v.felt}">
+function drawVenues(){$('#venues').innerHTML=VENUES.map((v,i)=>{if(v.custom){const ms=PRICING.minSol(PRICING.tiers[i]);return`<div class="tier inf" data-infinite style="--metal:${v.metal};--ink:${v.ink};--glow:${v.glow};--felt:${v.felt}"><div class="tcard2"><div class="sheen"></div><div class="tc-top"><span class="tc-brand">${SPADE}SUITED</span><span class="tc-chip"></span></div><div class="tc-name">Infinite</div><div class="tc-bot"><span>by invitation</span><span>your stakes</span></div></div><div class="tinfo"><div><b>from $50K</b><span>≈ ${ms.toLocaleString('en-US')} SOL · private table, you set the buy-in</span></div><span class="tplay" style="border-color:rgba(231,200,115,.4);color:#e7c873">private</span></div></div>`}const sol=PRICING.tiers[i].sol,u=PRICING.usd(sol),n=Object.values(LOBBY).filter(t=>t.venue===i&&t.mode!=='sng').reduce((a,t)=>a+t.seated,0);return`<div class="tier" data-quick="${i}" style="--metal:${v.metal};--ink:${v.ink};--glow:${v.glow};--felt:${v.felt}">
   <div class="tcard2"><div class="sheen"></div><div class="tc-top"><span class="tc-brand">${SPADE}SUITED</span><span class="tc-chip"></span></div><div class="tc-name">${v.room}</div><div class="tc-bot"><span>buy-in</span><span>${PRICING.fmtSol(sol)}</span></div></div>
   <div class="tinfo"><div><b>${PRICING.fmtSol(sol)}</b><span>${u?'≈ '+PRICING.fmtUsd(u)+' · ':''}${i>=5&&PRICING.btc(sol)?PRICING.fmtBtc(PRICING.btc(sol))+' · ':''}${v.room}</span></div><span class="tplay"><i></i>${n} seated</span></div></div>`}).join('');
- $('#pvVenue').innerHTML=VENUES.map((v,i)=>`<option value="${i}">${v.room} · ${PRICING.fmtSol(PRICING.tiers[i].sol)}</option>`).join('');
+ $('#pvVenue').innerHTML=VENUES.map((v,i)=>v.custom?'':`<option value="${i}">${v.room} · ${PRICING.fmtSol(PRICING.tiers[i].sol)}</option>`).join('');
  $('#entries').innerHTML=ENTRIES.map((e,i)=>`<div class="tc ${i===(+st.get('entry',0))?'on':''}" data-entry="${i}"><div class="k">${e.k} · ${VENUES[e.tier].room} card</div><div class="v"><span class="sol"></span>${PRICING.fmtSol(e.sol)}</div><div class="s">entry · 1st place up to ${PRICING.fmtSol(e.sol*9*.5*(1-PRICING.rake))}</div></div>`).join('')}
 function seatsBar(n){return`<span class="seatsbar">${Array.from({length:9},(_,i)=>`<i class="${i<n?'f':''}"></i>`).join('')}</span>`}
 function drawLobby(){const T=Object.values(LOBBY);const cash=T.filter(t=>t.mode!=='sng'),sng=T.filter(t=>t.mode==='sng'&&!t.started&&!t.finished);
@@ -231,6 +232,12 @@ let actKey='';function actsUI(v,my){const el=$('#acts'),p=my>=0?v.seats[my]:null
  const to=Math.max(minTo,Math.min(maxTo,+ra.value||minTo));rr.style.setProperty('--p',((to-minTo)/Math.max(1,maxTo-minTo)*100)+'%');
  $('#braise').textContent=maxTo<=v.curBet?'—':to>=maxTo?`all-in ${M(maxTo,v)}`:`${v.curBet===0?'bet':'raise to'} ${M(to,v)}`;$('#braise').disabled=maxTo<=v.curBet}
 $('#rr').oninput=e=>{$('#ra').value=e.target.value;render()};$('#ra').oninput=()=>render();
+function infiniteModal(){if(!needName())return;const ms=PRICING.minSol(PRICING.tiers[7]);
+ showOver(`<h3>Infinite table</h3><p>a private table at the stakes you set. minimum $50,000 per buy-in (≈ ${ms.toLocaleString('en-US')} SOL today). only people with the code can sit.</p>
+  <label class="f"><span>buy-in per player (SOL)</span><input class="in m" id="infSol" inputmode="decimal" value="${ms}"></label><div class="m" id="infUsd" style="font-size:12px;color:var(--mut);margin:-6px 0 12px"></div>
+  <label class="f"><span>table name</span><input class="in" id="infName" maxlength="30" placeholder="the vault"></label>
+  <button class="btn w" data-mkinf style="background:linear-gradient(180deg,#f3d68a,#c99a3a);color:#1a1405">create Infinite table</button>`);
+ const up=()=>{const v=+$('#infSol').value||0,u=PRICING.usd(v);$('#infUsd').textContent=u?`≈ ${PRICING.fmtUsd(u)}${u<50000?' · below the $50K minimum':''}`:''};$('#infSol').oninput=up;up()}
 function trySit(i){const v=V;if(!v)return;if(!P.wallet)return walletModal();
  const go=r=>{PEND=null;if(v.mode!=='sng')P.inPlay={code:CODE,stack:v.buyin,real:!!(r&&r.sig)};saveP();send('sit',{seat:i,avatar:P.avatar,lvl:lvlOf(P.xp),sig:r&&r.sig||''})};
  buyIn(v.sol||0,v.mode==='sng'?'tournament entry · '+v.name:'buy-in · '+v.name,`suited:${CODE}:seat${i}:${v.mode}`,go)}
@@ -245,6 +252,8 @@ document.addEventListener('click',e=>{const t=e.target;
  if(t.closest('[data-leave]')){standUp();return}
  if(t.closest('[data-rebuy]')){buyIn(V.sol||0,'rebuy · '+V.name,`suited:${CODE}:rebuy`,()=>send('rebuy',{}));return}
  if(t.closest('[data-pay]')){doPay();return}
+ if(t.closest('[data-infinite]')){infiniteModal();return}
+ if(t.closest('[data-mkinf]')){const v=+$('#infSol').value||0,ms=PRICING.minSol(PRICING.tiers[7]);if(v<ms)return toast(`the minimum is ${ms.toLocaleString('en-US')} SOL ($50K)`);const vv=VENUES[7];$('#over').classList.remove('on');createTable({name:$('#infName').value.trim()||'Infinite table',mode:'cash',venue:7,public:false,sb:vv.sb,bb:vv.bb,buyin:vv.buy,sol:v});return}
  if(t.closest('[data-practice]')){$('#over').classList.remove('on');const b=window.__buy;if(b)b.done({});return}
  const so=t.closest('[data-sitout]');if(so){send('sitout',{on:so.dataset.sitout==='1'});return}
  if(t.closest('[data-back]')){if(V&&V.seats.some(p=>p&&p.uid===UID)&&V.mode!=='sng')standUp();setTimeout(()=>{location.hash='#play';location.reload()},150);return}
