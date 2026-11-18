@@ -10,18 +10,14 @@ const hash=s=>{let h=0;for(const c of String(s))h=(h*31+c.charCodeAt(0))|0;retur
 
 // ---------- sedes (como las ciudades de un juego de billar: cada una sube la apuesta) ----------
 const VENUES=[
- {city:'Mexico City',room:'Rookie Room',sb:5,bb:10,buy:500,lvl:1,felt:'#0d3b26',sky:'#0b1a12',glow:'#f5b14c',fx:'fireflies',seed:3},
- {city:'Tokyo',room:'Neon District',sb:25,bb:50,buy:2500,lvl:3,felt:'#0c2f3a',sky:'#07101c',glow:'#ff3d81',fx:'rain',seed:7},
- {city:'Dubai',room:'Desert Mirage',sb:100,bb:200,buy:10000,lvl:6,felt:'#2e2410',sky:'#160f06',glow:'#ffcc66',fx:'sparks',seed:11},
- {city:'Las Vegas',room:'High Voltage',sb:500,bb:1000,buy:50000,lvl:10,felt:'#24113d',sky:'#0b0516',glow:'#b26bff',fx:'beams',seed:19},
- {city:'Hong Kong',room:'Dragon Tower',sb:2500,bb:5000,buy:250000,lvl:15,felt:'#3a0f12',sky:'#120406',glow:'#ff6a3d',fx:'lanterns',seed:23},
- {city:'Monaco',room:'The Riviera',sb:10000,bb:20000,buy:1000000,lvl:20,felt:'#0e2236',sky:'#03070d',glow:'#7cc7ff',fx:'stars',seed:31}];
-// horizonte de cada ciudad (edificios con ventanas encendidas), dibujado en SVG
-function skyline(v,w=1600,h=420,dense=1){let r=v.seed*9301+49297;const rnd=()=>((r=(r*9301+49297)%233280)/233280);let x=0,b='',win='';
- while(x<w){const bw=30+rnd()*70*dense,bh=h*(.18+rnd()*.62)*(v.fx==='sparks'&&rnd()>.85?1.35:1);const y=h-bh;b+=`<rect x="${x.toFixed(0)}" y="${y.toFixed(0)}" width="${bw.toFixed(0)}" height="${bh.toFixed(0)}"/>`;
-  if(rnd()>.7)b+=`<rect x="${(x+bw/2-1).toFixed(0)}" y="${(y-24-rnd()*30).toFixed(0)}" width="2" height="40"/>`;
-  for(let wy=y+10;wy<h-8;wy+=12)for(let wx=x+6;wx<x+bw-6;wx+=10)if(rnd()>.78)win+=`<rect x="${wx.toFixed(0)}" y="${wy.toFixed(0)}" width="4" height="5"/>`;x+=bw+2+rnd()*6}
- return`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMax slice" style="position:absolute;inset:auto 0 0 0;width:100%;height:100%"><defs><linearGradient id="sk${v.seed}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#05070a"/><stop offset="1" stop-color="#000"/></linearGradient></defs><g fill="url(#sk${v.seed})">${b}</g><g fill="${v.glow}" opacity=".55">${win}</g></svg>`}
+ {room:'Classic',sb:5,bb:10,buy:500,lvl:1,felt:'#0c3a25',glow:'#2bd47d',metal:'linear-gradient(135deg,#1f7a4d,#0a3d25 55%,#062818)',ink:'#d9ffe9'},
+ {room:'Silver',sb:25,bb:50,buy:2500,lvl:3,felt:'#1b252c',glow:'#cfd6de',metal:'linear-gradient(135deg,#f2f4f7,#a9b0b9 45%,#6c737c)',ink:'#15181b'},
+ {room:'Gold',sb:100,bb:200,buy:10000,lvl:6,felt:'#2b2210',glow:'#f2cf6b',metal:'linear-gradient(135deg,#fbe8a6,#d4a640 45%,#8a6416)',ink:'#2a1d04'},
+ {room:'Platinum',sb:500,bb:1000,buy:50000,lvl:10,felt:'#14242c',glow:'#bfe3f2',metal:'linear-gradient(135deg,#f4fbff,#b9cdd8 45%,#7d93a1)',ink:'#0f1a20'},
+ {room:'Black',sb:2500,bb:5000,buy:250000,lvl:15,felt:'#0b0b0c',glow:'#e9e9ea',metal:'linear-gradient(135deg,#3a3a3f,#111113 50%,#000)',ink:'#f2f2f3'},
+ {room:'Diamond',sb:10000,bb:20000,buy:1000000,lvl:20,felt:'#0a2a3a',glow:'#7fd8ff',metal:'linear-gradient(135deg,#e4f8ff,#7fd0f2 40%,#2d7fb0)',ink:'#05202e'},
+ {room:'Double Diamond',sb:50000,bb:100000,buy:5000000,lvl:25,felt:'#1a1236',glow:'#c9a6ff',metal:'linear-gradient(135deg,#ffe3fb,#c8a8ff 35%,#7c6cff 65%,#3c2f9e)',ink:'#170d33'}];
+
 const ENTRIES=[{k:'starter',v:1000},{k:'pro',v:10000},{k:'high roller',v:100000},{k:'major',v:1000000}];
 
 // ---------- perfil local: monedas de juego, nivel, foto ----------
@@ -59,23 +55,25 @@ async function unseal(pub,b){return JSON.parse(new TextDecoder().decode(await cr
 const sb=window.supabase.createClient(SB.url,SB.key,{auth:{persistSession:false}});
 let LOBBY={},lobby=null,lobbyOk=false,lastAnn=null;
 function ensureLobby(){if(lobby&&['joined','joining'].includes(lobby.state))return;if(lobby){try{sb.removeChannel(lobby)}catch(e){}}lobbyOk=false;
- lobby=sb.channel('sixth-lobby',{config:{presence:{key:UID}}});
- lobby.on('presence',{event:'sync'},()=>{LOBBY={};Object.values(lobby.presenceState()).flat().forEach(t=>{if(t.code)LOBBY[t.code]=t});drawLobby();drawVenues()});
- lobby.subscribe(s=>{if(s==='SUBSCRIBED'){lobbyOk=true;if(lastAnn)lobby.track(lastAnn);setTimeout(drawLobby,1500)}})}
+ lobby=sb.channel('suited-lobby',{config:{presence:{key:UID}}});
+ lobby.on('presence',{event:'sync'},()=>{LOBBY={};Object.values(lobby.presenceState()).flat().forEach(t=>{if(t.code)LOBBY[t.code]=t});const on=Object.values(lobby.presenceState()).flat();const seated=on.reduce((x,t)=>x+(t.seated||0),0);document.querySelectorAll('[data-online]').forEach(e=>e.textContent=fmt(Math.max(on.length,seated)));drawLobby();drawVenues()});
+ lobby.subscribe(s=>{if(s==='SUBSCRIBED'){lobbyOk=true;lobby.track(lastAnn||{here:1});setTimeout(drawLobby,1500)}})}
 ensureLobby();setInterval(ensureLobby,5000);
 let lastLobbyTrack=0;function announce(force){if(!G||!HOST||!G.public)return;if(!force&&Date.now()-lastLobbyTrack<3000)return;lastLobbyTrack=Date.now();
  ensureLobby();lastAnn={code:G.code,name:G.name,mode:G.mode,venue:G.venue,seated:G.seats.filter(Boolean).length,sb:G.sb,bb:G.bb,buyin:G.buyin,started:!!G.started,finished:G.phase==='finished',prize:G.prize||0};if(lobbyOk)lobby.track(lastAnn)}
 
 // ---------- lobby ----------
 const CODEC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>CODEC[b%CODEC.length]).join('');
-function drawVenues(){const L=lvlOf(P.xp);$('#venues').innerHTML=VENUES.map((v,i)=>{const lock=L<v.lvl;return`<div class="ven ${lock?'lock':''}" data-quick="${i}" style="--sky:${v.sky};--glow:${v.glow};--felt:${v.felt}"><div class="vsky">${skyline(v,800,300)}</div><div class="vtab"></div>${lock?`<span class="lk"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>LV ${v.lvl}</span>`:`<span class="live2"><i></i>${Object.values(LOBBY).filter(t=>t.venue===i&&t.mode!=='sng').reduce((a,t)=>a+t.seated,0)} playing</span>`}
-  <div class="vinfo"><div class="city">${v.city}</div><h3>${v.room}</h3><div class="meta"><span>${short(v.sb)}/${short(v.bb)}</span><span><i class="coin" style="width:11px;height:11px;display:inline-block;vertical-align:-1px"></i> ${short(v.buy)}</span></div></div></div>`}).join('');
- $('#pvVenue').innerHTML=VENUES.map((v,i)=>`<option value="${i}" ${L<v.lvl?'disabled':''}>${v.city} · ${short(v.sb)}/${short(v.bb)}</option>`).join('');
+const SPADE='<svg viewBox="0 0 24 24"><path d="M12 2C9 6 4 9 4 13.2A4.3 4.3 0 0011.3 16c-.3 2.2-1.2 3.9-2.8 5h7c-1.6-1.1-2.5-2.8-2.8-5A4.3 4.3 0 0020 13.2C20 9 15 6 12 2z" fill="currentColor"/></svg>';
+function drawVenues(){const L=lvlOf(P.xp);$('#venues').innerHTML=VENUES.map((v,i)=>{const lock=L<v.lvl,n=Object.values(LOBBY).filter(t=>t.venue===i&&t.mode!=='sng').reduce((a,t)=>a+t.seated,0);return`<div class="tier ${lock?'lock':''}" data-quick="${i}" style="--metal:${v.metal};--ink:${v.ink};--glow:${v.glow};--felt:${v.felt}">
+  <div class="tcard2"><div class="sheen"></div><div class="tc-top"><span class="tc-brand">${SPADE}SUITED</span><span class="tc-chip"></span></div><div class="tc-name">${v.room}</div><div class="tc-bot"><span>${short(v.sb)}/${short(v.bb)}</span><span>LV ${v.lvl}</span></div></div>
+  <div class="tinfo"><div><b>${v.room}</b><span>buy-in ${short(v.buy)} · blinds ${short(v.sb)}/${short(v.bb)}</span></div>${lock?`<span class="tlock"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>level ${v.lvl}</span>`:`<span class="tplay"><i></i>${n} seated</span>`}</div></div>`}).join('');
+ $('#pvVenue').innerHTML=VENUES.map((v,i)=>`<option value="${i}" ${L<v.lvl?'disabled':''}>${v.room} · ${short(v.sb)}/${short(v.bb)}</option>`).join('');
  $('#entries').innerHTML=ENTRIES.map((e,i)=>`<div class="tc ${i===(+st.get('entry',0))?'on':''}" data-entry="${i}"><div class="k">${e.k}</div><div class="v"><span class="coin"></span>${short(e.v)}</div><div class="s">entry · 1st place up to ${short(e.v*9*.5)}</div></div>`).join('')}
 function seatsBar(n){return`<span class="seatsbar">${Array.from({length:9},(_,i)=>`<i class="${i<n?'f':''}"></i>`).join('')}</span>`}
 function drawLobby(){const T=Object.values(LOBBY);const cash=T.filter(t=>t.mode!=='sng'),sng=T.filter(t=>t.mode==='sng'&&!t.started&&!t.finished);
  $('#liveN').textContent=cash.length?`· ${cash.length}`:'';
- $('#liveTables').innerHTML=cash.length?cash.sort((a,b)=>b.seated-a.seated).map(t=>{const v=VENUES[t.venue]||VENUES[0];return`<div class="tr" style="--vf:${v.felt}"><span class="dot"></span><div><div class="n">${esc(t.name)}</div><div class="s">${v.city} · blinds ${short(t.sb)}/${short(t.bb)} · buy-in ${short(t.buyin)}</div></div>${seatsBar(t.seated)}<button class="btn sm ${t.seated>=9?'gh':''}" data-open="${t.code}">${t.seated>=9?'full':'sit'}</button></div>`}).join(''):'<div class="empty">no public tables right now. tap quick seat in any room to open one.</div>';
+ $('#liveTables').innerHTML=cash.length?cash.sort((a,b)=>b.seated-a.seated).map(t=>{const v=VENUES[t.venue]||VENUES[0];return`<div class="tr" style="--vf:${v.felt}"><span class="dot"></span><div><div class="n">${esc(t.name)}</div><div class="s">${v.room} · blinds ${short(t.sb)}/${short(t.bb)} · buy-in ${short(t.buyin)}</div></div>${seatsBar(t.seated)}<button class="btn sm ${t.seated>=9?'gh':''}" data-open="${t.code}">${t.seated>=9?'full':'sit'}</button></div>`}).join(''):'<div class="empty">no public tables right now. tap quick seat in any room to open one.</div>';
  $('#tN').textContent=sng.length?`${sng.length} open`:'';
  $('#liveT').innerHTML=sng.length?sng.map(t=>`<div class="tr"><span class="dot" style="background:var(--gold)"></span><div><div class="n">${esc(t.name)}</div><div class="s">entry ${short(t.buyin)} · prize pool ${short(t.prize)} · starts when 2+ are seated</div></div>${seatsBar(t.seated)}<button class="btn sm" data-open="${t.code}">register</button></div>`).join(''):'<div class="empty">no tournaments open. create one below.</div>'}
 function needName(){if(P.name)return true;showOver(`<h3>pick your table name</h3><p>other players will see this name.</p><input class="in" id="oName" maxlength="16" placeholder="your name"><div style="height:12px"></div><button class="btn w" data-setname>continue</button>`);setTimeout(()=>$('#oName')?.focus(),50);return false}
@@ -87,7 +85,7 @@ function quick(i){const v=VENUES[i];if(lvlOf(P.xp)<v.lvl)return toast(`reach lev
 // ---------- perfil ----------
 function drawProfile(){const L=lvlOf(P.xp),a=xpFor(L),b=xpFor(L+1);$('#pAva').innerHTML=avaH(P.name,P.avatar,UID);$('#pName').value=P.name;$('#pXp').style.width=((P.xp-a)/(b-a)*100)+'%';$('#pLv').textContent=`level ${L} · ${fmt(P.xp-a)} / ${fmt(b-a)} xp to level ${L+1}`;
  $('#pStats').innerHTML=[[fmt(P.coins),'coins'],[fmt(P.hands),'hands played'],[fmt(P.won),'pots won'],[fmt(P.best),'biggest pot'],[fmt(P.tWins),'tournaments won'],[P.hands?Math.round(P.won/P.hands*100)+'%':'—','win rate']].map(([x,y])=>`<div><b>${x}</b><span>${y}</span></div>`).join('');
- $('#road').innerHTML=VENUES.map(v=>`<div class="${L>=v.lvl?'ok':''}"><b>${v.city}</b>${L>=v.lvl?'unlocked':'level '+v.lvl}<div style="color:var(--mut);margin-top:4px">${short(v.sb)}/${short(v.bb)}</div></div>`).join('')}
+ $('#road').innerHTML=VENUES.map(v=>`<div class="${L>=v.lvl?'ok':''}"><b>${v.room}</b>${L>=v.lvl?'unlocked':'level '+v.lvl}<div style="color:var(--mut);margin-top:4px">${short(v.sb)}/${short(v.bb)}</div></div>`).join('')}
 $('#pName').onchange=e=>{P.name=e.target.value.trim().slice(0,16);saveP()};
 $('#pFile').onchange=e=>{const f=e.target.files[0];if(!f)return;const img=new Image();img.onload=()=>{const c=document.createElement('canvas');c.width=c.height=96;const x=c.getContext('2d'),s=Math.min(img.width,img.height);x.drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,96,96);P.avatar=c.toDataURL('image/jpeg',.72);saveP();drawProfile();toast('photo updated')};img.src=URL.createObjectURL(f)};
 
@@ -97,7 +95,7 @@ async function enterTable(code){CODE=code;document.body.style.overflow='hidden';
  if(!P.name){needName();return}
  const saved=st.get('host.'+code,null);HOST=!!(saved&&saved.hostUid===UID);if(HOST)G=saved;
  await myKeys();
- ch=sb.channel('sixth-'+code,{config:{broadcast:{self:false},presence:{key:UID}}});
+ ch=sb.channel('suited-'+code,{config:{broadcast:{self:false},presence:{key:UID}}});
  ch.on('broadcast',{event:'state'},({payload})=>{if(HOST)return;G=payload;lastState=Date.now();onState()});
  ch.on('broadcast',{event:'hole'},async({payload})=>{if(payload.to!==UID||!G)return;try{HOLE={hand:payload.hand,cards:await unseal(G.hostPub,payload.box)};render()}catch(e){}});
  ch.on('broadcast',{event:'req'},({payload})=>{if(HOST)handle(payload)});
@@ -141,17 +139,7 @@ function confetti(){const c=document.createElement('canvas');c.style.cssText='po
  const Q=Array.from({length:110},()=>({x:innerWidth/2,y:innerHeight*.55,vx:(Math.random()-.5)*13,vy:-Math.random()*13-4,r:Math.random()*6+3,c:['#58bc89','#22e07a','#fff','#e7c873','#b6f5d0'][Math.random()*5|0],a:Math.random()*6}));let n=0;
  (function f(){x.clearRect(0,0,innerWidth,innerHeight);Q.forEach(p=>{p.vy+=.34;p.x+=p.vx;p.y+=p.vy;p.a+=.2;x.save();x.translate(p.x,p.y);x.rotate(p.a);x.fillStyle=p.c;x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);x.restore()});if(++n<120)requestAnimationFrame(f);else c.remove()})()}
 // fondo de ciudad con efectos (lluvia neón, luciérnagas, chispas, reflectores, linternas, estrellas)
-let SCN=-1,FXR=0;function scene(vi){if(vi===SCN)return;SCN=vi;const v=VENUES[vi]||VENUES[0],el=$('#scene');el.style.setProperty('--sky',v.sky);el.style.setProperty('--glow',v.glow);$('#room').style.setProperty('--felt',v.felt);$('#room').style.setProperty('--glow',v.glow);
- el.querySelector('.city2').innerHTML=skyline(v,1800,520,1.1);el.querySelector('.cname').textContent=v.city;cancelAnimationFrame(FXR);const c=el.querySelector('canvas'),x=c.getContext('2d');let W,H2;const rs=()=>{W=c.width=innerWidth;H2=c.height=innerHeight};rs();addEventListener('resize',rs);
- const N=v.fx==='rain'?160:v.fx==='stars'?140:70,Q=Array.from({length:N},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,s:Math.random(),p:Math.random()*6.28}));let t=0;
- (function f(){t+=.016;x.clearRect(0,0,W,H2);
-  if(v.fx==='rain'){x.strokeStyle=v.glow+'55';x.lineWidth=1;Q.forEach(q=>{q.y+=9+q.s*8;q.x-=1.5;if(q.y>H2){q.y=-20;q.x=Math.random()*W}x.beginPath();x.moveTo(q.x,q.y);x.lineTo(q.x+2,q.y-14-q.s*10);x.stroke()})}
-  else if(v.fx==='fireflies'){Q.forEach(q=>{q.x+=Math.sin(t+q.p)*.4;q.y+=Math.cos(t*.7+q.p)*.3;const a=.35+.35*Math.sin(t*2+q.p);x.fillStyle=`rgba(255,196,90,${a})`;x.shadowColor='#ffb84c';x.shadowBlur=12;x.beginPath();x.arc(q.x,q.y,1.2+q.s*1.8,0,7);x.fill()});x.shadowBlur=0}
-  else if(v.fx==='sparks'){Q.forEach(q=>{q.y-=.4+q.s*1.2;q.x+=Math.sin(t+q.p)*.3;if(q.y<0){q.y=H2+10;q.x=Math.random()*W}x.fillStyle=`rgba(255,210,120,${.25+q.s*.5})`;x.fillRect(q.x,q.y,1.5,1.5)})}
-  else if(v.fx==='beams'){for(let k=0;k<4;k++){const ang=Math.sin(t*.5+k*1.7)*.5-1.57,bx=W*(.15+k*.23);const g=x.createLinearGradient(bx,H2,bx+Math.cos(ang)*H2,H2+Math.sin(ang)*H2);g.addColorStop(0,v.glow+'40');g.addColorStop(1,v.glow+'00');x.fillStyle=g;x.beginPath();x.moveTo(bx-6,H2);x.lineTo(bx+Math.cos(ang-.06)*H2*1.2,H2+Math.sin(ang-.06)*H2*1.2);x.lineTo(bx+Math.cos(ang+.06)*H2*1.2,H2+Math.sin(ang+.06)*H2*1.2);x.lineTo(bx+6,H2);x.fill()}}
-  else if(v.fx==='lanterns'){Q.slice(0,40).forEach(q=>{q.y-=.25+q.s*.5;q.x+=Math.sin(t*.6+q.p)*.25;if(q.y<-20){q.y=H2+20;q.x=Math.random()*W}const r=3+q.s*5;x.fillStyle=`rgba(255,120,60,${.35+q.s*.4})`;x.shadowColor='#ff6a3d';x.shadowBlur=18;x.fillRect(q.x-r/2,q.y-r*.7,r,r*1.4)});x.shadowBlur=0}
-  else{Q.forEach(q=>{const a=.2+.6*Math.abs(Math.sin(t*.8+q.p));x.fillStyle=`rgba(200,225,255,${a*q.s})`;x.fillRect(q.x,q.y*.65,1.3,1.3)});if(Math.sin(t*.37)>.995){x.strokeStyle='rgba(255,255,255,.6)';x.beginPath();const sx=Math.random()*W;x.moveTo(sx,40);x.lineTo(sx-120,110);x.stroke()}}
-  FXR=requestAnimationFrame(f)})()}
+let SCN=-1;function scene(vi){if(vi===SCN)return;SCN=vi;const v=VENUES[vi]||VENUES[0],el=$('#scene');el.style.setProperty('--glow',v.glow);$('#room').style.setProperty('--felt',v.felt);$('#room').style.setProperty('--glow',v.glow);el.querySelector('.cname').textContent=v.room}
 function showFinished(v){showOver(`<h3>${esc(v.name)} · final results</h3><p>prize pool ${fmt(v.prize)} coins</p><div class="places">${v.places.map(pl=>`<div class="${pl.uid===UID?'me':''}"><span>${pl.place}. ${esc(pl.name)}</span><b class="m">${pl.prize?'+'+fmt(pl.prize):'—'}</b></div>`).join('')}</div><button class="btn w" data-back>back to lobby</button>`)}
 
 const SUIT={s:'♠︎',h:'♥︎',d:'♦︎',c:'♣︎'};
@@ -167,7 +155,7 @@ function render(){if(!CODE)return;const v=HOST&&G?H.publicView(G):G;if(!v)return
  const ven=VENUES[v.venue]||VENUES[0];
  put($('#rtop'),`<button class="pill" data-copy><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>invite · <span class="m">${CODE}</span></button><button class="pill" data-mute>${st.get('mute',0)?'sound off':'sound on'}</button>`);
  const lvLeft=v.mode==='sng'&&v.started?Math.max(0,v.levelMs-((Date.now()-v.levelAt)%v.levelMs)):0;
- put($('#hud'),`<div class="chip2">${esc(v.name)}</div><div class="chip2">${ven.city} · blinds <b>${short(v.sb)}/${short(v.bb)}</b></div>${v.mode==='sng'?`<div class="chip2">level ${v.level+1}${v.started?` · next in ${Math.floor(lvLeft/60000)}:${String(Math.floor(lvLeft/1000)%60).padStart(2,'0')}`:''}</div><div class="chip2">prize pool <b>${fmt(v.prize)}</b> · ${v.seats.filter(p=>p&&!p.out).length} left</div>`:`<div class="chip2">buy-in ${fmt(v.buyin)}</div>`}`);
+ put($('#hud'),`<div class="chip2">${esc(v.name)}</div><div class="chip2">${ven.room} · blinds <b>${short(v.sb)}/${short(v.bb)}</b></div>${v.mode==='sng'?`<div class="chip2">level ${v.level+1}${v.started?` · next in ${Math.floor(lvLeft/60000)}:${String(Math.floor(lvLeft/1000)%60).padStart(2,'0')}`:''}</div><div class="chip2">prize pool <b>${fmt(v.prize)}</b> · ${v.seats.filter(p=>p&&!p.out).length} left</div>`:`<div class="chip2">buy-in ${fmt(v.buyin)}</div>`}`);
  const mob=innerWidth<=820,my=v.seats.findIndex(p=>p&&p.uid===UID),rot=my>=0?my:0,fr=$('#rail').getBoundingClientRect(),cx=fr.left+fr.width/2,cy=fr.top+fr.height/2;
  const Pp=i=>{const a=(90+((i-rot+9)%9)*40)*Math.PI/180;return{x:cx+fr.width/2*(mob?1.02:1.0)*Math.cos(a),y:cy+fr.height/2*(mob?1.0:1.04)*Math.sin(a)}};
  const Bp=i=>{const a=Pp(i);return{x:a.x+(cx-a.x)*.4,y:a.y+(cy-a.y)*.38}};

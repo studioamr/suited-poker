@@ -1,6 +1,6 @@
-# SIXTH · qué hace falta para jugar con dinero real en cripto
+# SUITED · qué hace falta para jugar con dinero real en cripto
 
-Hoy SIXTH funciona con **monedas de juego sin valor**. Esto lista lo que hace falta antes de abrir mesas y torneos con USDC/SOL de verdad (entradas de miles de dólares incluidas). Las cifras son rangos orientativos para planear: **confírmalas con un abogado de juego antes de gastar**.
+Hoy SUITED funciona con **monedas de juego sin valor**. Esto lista lo que hace falta antes de abrir mesas y torneos con USDC/SOL de verdad (entradas de miles de dólares incluidas). Las cifras son rangos orientativos para planear: **confírmalas con un abogado de juego antes de gastar**.
 
 ## 1. Lo legal (va primero: sin esto no se abre)
 
