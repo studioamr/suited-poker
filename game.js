@@ -26,7 +26,7 @@ const saveP=()=>{st.set('profile',P);hdr()};
 const lvlOf=xp=>Math.floor(Math.sqrt(xp/20))+1,xpFor=l=>20*(l-1)*(l-1);
 const UID=st.get('uid',null)||(()=>{const u='u'+crypto.getRandomValues(new Uint32Array(2)).join('');st.set('uid',u);return u})();
 function avaH(name,img,uid){if(img)return`<img src="${img}" alt="">`;const h=hash(uid||name),c1=`hsl(${h%360} 45% 38%)`,c2=`hsl(${(h>>4)%360} 55% 18%)`;return`<span style="position:absolute;inset:0;background:linear-gradient(135deg,${c1},${c2});display:grid;place-items:center">${esc((name||'?').trim()[0]||'?').toUpperCase()}</span>`}
-function hdr(){$('#coins').textContent=fmt(P.coins);$('#mylv').textContent=lvlOf(P.xp);$('#myava').innerHTML=avaH(P.name,P.avatar,UID)}
+function hdr(){$('#coins').textContent=fmt(P.coins);const wb=document.getElementById('wbtn');if(wb){wb.textContent=P.wallet?shortW(P.wallet.addr):'connect wallet';wb.classList.toggle('on',!!P.wallet)}$('#mylv').textContent=lvlOf(P.xp);$('#myava').innerHTML=avaH(P.name,P.avatar,UID)}
 function addCoins(n,why){P.coins+=n;saveP();if(n>0&&why)toast(`+${fmt(n)} coins · ${why}`)}
 function bonus(){const d=new Date().toDateString();if(P.lastBonus===d)return toast('you already claimed today’s bonus. come back tomorrow.');P.lastBonus=d;addCoins(2000,'daily bonus')}
 // fichas que quedaron en una mesa que cerraste sin levantarte
@@ -76,7 +76,17 @@ function drawLobby(){const T=Object.values(LOBBY);const cash=T.filter(t=>t.mode!
  $('#liveTables').innerHTML=cash.length?cash.sort((a,b)=>b.seated-a.seated).map(t=>{const v=VENUES[t.venue]||VENUES[0];return`<div class="tr" style="--vf:${v.felt}"><span class="dot"></span><div><div class="n">${esc(t.name)}</div><div class="s">${v.room} · blinds ${short(t.sb)}/${short(t.bb)} · buy-in ${short(t.buyin)}</div></div>${seatsBar(t.seated)}<button class="btn sm ${t.seated>=9?'gh':''}" data-open="${t.code}">${t.seated>=9?'full':'sit'}</button></div>`}).join(''):'<div class="empty">no public tables right now. tap quick seat in any room to open one.</div>';
  $('#tN').textContent=sng.length?`${sng.length} open`:'';
  $('#liveT').innerHTML=sng.length?sng.map(t=>`<div class="tr"><span class="dot" style="background:var(--gold)"></span><div><div class="n">${esc(t.name)}</div><div class="s">entry ${short(t.buyin)} · prize pool ${short(t.prize)} · starts when 2+ are seated</div></div>${seatsBar(t.seated)}<button class="btn sm" data-open="${t.code}">register</button></div>`).join(''):'<div class="empty">no tournaments open. create one below.</div>'}
-function needName(){if(P.name)return true;showOver(`<h3>pick your table name</h3><p>other players will see this name.</p><input class="in" id="oName" maxlength="16" placeholder="your name"><div style="height:12px"></div><button class="btn w" data-setname>continue</button>`);setTimeout(()=>$('#oName')?.focus(),50);return false}
+// para sentarte hay que conectar una wallet (Phantom o MetaMask): es tu identidad en la mesa
+const shortW=a=>a?a.slice(0,4)+'…'+a.slice(-4):'';
+function walletModal(){showOver(`<h3>connect your wallet</h3><p>your wallet is your seat at SUITED. connecting only reads your address: it never moves funds.</p>
+ <button class="wopt" data-cw="sol"><span class="wi" style="background:linear-gradient(135deg,#ab9ff2,#534bb1)"><svg viewBox="0 0 24 24"><path d="M5 16.5h11.5l2.5-2.5H7.5zM5 7.5h11.5L19 10H7.5zM19 12H7.5L5 9.5h11.5z" fill="#fff"/></svg></span><span><b>Phantom</b><small>Solana</small></span></button>
+ <button class="wopt" data-cw="eth"><span class="wi" style="background:linear-gradient(135deg,#f6851b,#c35a0b)"><svg viewBox="0 0 24 24"><path d="M12 2l6 10-6 3.6L6 12zM12 16.8l6-3.6-6 8.8-6-8.8z" fill="#fff"/></svg></span><span><b>MetaMask</b><small>Ethereum · Base</small></span></button>
+ <p style="margin:14px 0 0;font-size:11.5px">18+ only. by connecting you accept the table rules.</p>`)}
+async function connectWallet(kind){try{let addr;
+ if(kind==='sol'){const pv=window.phantom?.solana||window.solana;if(!pv){window.open('https://phantom.app/download','_blank','noopener');return toast('install Phantom, then come back')}const r=await pv.connect();addr=r.publicKey.toString()}
+ else{if(!window.ethereum){window.open('https://metamask.io/download/','_blank','noopener');return toast('install MetaMask, then come back')}const a=await window.ethereum.request({method:'eth_requestAccounts'});addr=a[0]}
+ P.wallet={kind,addr};if(!P.name)P.name=shortW(addr);saveP();$('#over').classList.remove('on');toast('wallet connected · '+shortW(addr));if(CODE)enterTable(CODE)}catch(e){toast('connection cancelled')}}
+function needName(){if(!P.wallet){walletModal();return false}if(P.name)return true;showOver(`<h3>pick your table name</h3><p>other players will see this name.</p><input class="in" id="oName" maxlength="16" placeholder="your name"><div style="height:12px"></div><button class="btn w" data-setname>continue</button>`);setTimeout(()=>$('#oName')?.focus(),50);return false}
 function createTable(cfg){const code=newCode(),Gn=H.newTable({code,...cfg},UID);st.set('host.'+code,Gn);location.hash='#t/'+code}
 function quick(i){const v=VENUES[i];if(lvlOf(P.xp)<v.lvl)return toast(`reach level ${v.lvl} to unlock ${v.room}`);if(!needName())return;if(P.coins<v.buy)return toast(`you need ${fmt(v.buy)} coins for this room`);
  const t=Object.values(LOBBY).filter(t=>t.mode!=='sng'&&t.venue===i&&t.seated<9).sort((a,b)=>b.seated-a.seated)[0];
@@ -220,8 +230,10 @@ document.addEventListener('click',e=>{const t=e.target;
  const en=t.closest('[data-entry]');if(en){st.set('entry',+en.dataset.entry);drawVenues();return}
  if(t.closest('[data-mkt]')){if(!needName())return;const e2=ENTRIES[+st.get('entry',0)];if(P.coins<e2.v)return toast(`you need ${fmt(e2.v)} coins for this entry`);const stck=+$('#tStack').value;
   createTable({name:$('#tName').value.trim()||`${e2.k} sit & go`,mode:'sng',venue:Math.min(5,[0,2,3,5][+st.get('entry',0)]),public:$('#tPub').value==='1',sb:Math.max(1,Math.round(stck/150)),bb:Math.max(2,Math.round(stck/75)),buyin:e2.v,stack:stck,levelMs:+$('#tSpeed').value});return}
+ const cw=t.closest('[data-cw]');if(cw){connectWallet(cw.dataset.cw);return}
+ if(t.closest('[data-wallet]')){if(P.wallet){if(confirm('disconnect '+shortW(P.wallet.addr)+'?')){P.wallet=null;saveP()}}else walletModal();return}
  if(t.closest('[data-setname]')){const n=$('#oName').value.trim();if(!n)return;P.name=n.slice(0,16);saveP();$('#over').classList.remove('on');if(CODE)enterTable(CODE);return}
- if(t.id==='over'&&!$('#oName'))$('#over').classList.remove('on')});
+ if(t.id==='over'&&!$('#oName')&&!CODE)$('#over').classList.remove('on')});
 addEventListener('keydown',e=>{if(!$('#acts').classList.contains('on')||/INPUT/.test(document.activeElement.tagName))return;const k=e.key.toLowerCase();
  if(k==='f')$('[data-a="fold"]').click();else if(k==='c'||k===' '){$('#bcall').click();e.preventDefault()}else if(k==='r')$('#braise').click()});
 addEventListener('resize',render);

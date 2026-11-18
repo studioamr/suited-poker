@@ -32,6 +32,9 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}input,
 .ava{position:relative;border-radius:50%;flex:none;background:#1b221e;display:grid;place-items:center;font-weight:800;color:#fff;overflow:hidden}
 .ava img{width:100%;height:100%;object-fit:cover;display:block}
 .me2{display:flex;align-items:center;gap:8px}
+.wbtn{height:42px;padding:0 16px;border-radius:13px;font-weight:800;font-size:13px;background:#fff;color:#000;transition:all .2s}.wbtn.on{background:rgba(255,255,255,.06);color:var(--ink);border:1px solid var(--line2);font-family:'JetBrains Mono',monospace;font-size:12.5px}
+.wopt{width:100%;display:flex;align-items:center;gap:14px;padding:14px;border-radius:16px;border:1px solid var(--line2);background:rgba(255,255,255,.03);margin-bottom:8px;text-align:left;transition:all .2s}.wopt:hover{border-color:var(--g);background:rgba(43,212,125,.06)}
+.wopt .wi{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:none}.wopt .wi svg{width:24px;height:24px}.wopt b{display:block;font-size:15px}.wopt small{color:var(--mut);font-size:12px}
 /* ===== páginas ===== */
 .main{min-height:100vh}
 .page{display:none;padding:88px 28px 70px;max-width:1280px;margin:0 auto;animation:up .5s cubic-bezier(.2,.8,.2,1)}.page.on{display:block}
@@ -213,6 +216,7 @@ body.inroom .top{display:none}
  <span class="online"><i></i><b data-online>—</b> online now</span>
  <span class="sp"></span>
  <div class="wal"><span class="b"><i class="coin"></i><span id="coins">0</span></span><button data-bonus>daily bonus</button></div>
+ <button class="wbtn" id="wbtn" data-wallet>connect wallet</button>
  <div class="me2"><span class="lv" id="mylv">1</span><a href="#me"><span class="ava" id="myava" style="width:38px;height:38px"></span></a></div>
 </header>
 
