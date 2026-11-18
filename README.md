@@ -1,4 +1,4 @@
-# SUITED · Poker
+# SUITED by NorthPoint · Poker
 
 Texas Hold'em rooms with 9 seats: private tables, a public table finder, Sit & Go tournaments, six rooms unlocked by level, and a profile with photo, level and play coins.
 
