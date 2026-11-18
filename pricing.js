@@ -11,9 +11,9 @@ window.PRICING = {
     { name: 'Infinite', sol: null, minUsd: 50000, custom: true }], // a la medida: desde $50,000, el anfitrión pone el monto
   entries: [ // torneos: entrada en SOL y tarjeta que se necesita
     { k: 'starter', sol: 0.1, tier: 0 }, { k: 'pro', sol: 1, tier: 2 }, { k: 'high roller', sol: 10, tier: 4 }, { k: 'major', sol: 50, tier: 6 }],
-  px: { sol: null, btc: null },
+  px: { sol: null, btc: null, mxn: null },
   async load() { // precio en vivo para mostrar el equivalente en dólares y en BTC
-    try { const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana,bitcoin&vs_currencies=usd'); const d = await r.json(); this.px.sol = d.solana.usd; this.px.btc = d.bitcoin.usd; } catch (e) {}
+    try { const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana,bitcoin&vs_currencies=usd,mxn'); const d = await r.json(); this.px.sol = d.solana.usd; this.px.btc = d.bitcoin.usd; this.px.mxn = d.solana.mxn; } catch (e) {}
     return this.px;
   },
   minSol(t) { return t.custom ? (this.px.sol ? Math.ceil(t.minUsd / this.px.sol) : 700) : t.sol; },
