@@ -20,3 +20,9 @@ const S=H.newTable({code:'S',sb:1,bb:2,buyin:200},'h');['a','b','c'].forEach((u,
 while(H.inBetting(S)){const p=S.seats[S.toAct];H.act(S,p.uid,'raise',p.bet+p.stack)||0}
 ok(S.results.pots.length>=2,'side pot created: '+S.results.pots.map(p=>p.amount));ok(S.seats.reduce((a,p)=>a+(p?p.stack:0),0)===450,'side pot chips');
 console.log(hands+' hands simulated; '+(fails?fails+' failures':'all engine tests passed'));
+// torneo: termina con un ganador y reparte el premio completo
+{let seed2=11;const rng2=()=>((seed2=seed2*16807%2147483647)-1)/2147483646;
+ const T=H.newTable({code:'Z',mode:'sng',sb:10,bb:20,buyin:1000,stack:1500,levelMs:3600000},'h');for(let k=0;k<7;k++)H.sit(T,{uid:'t'+k,name:'T'+k,seat:k});
+ let hands2=0;while(T.phase!=='finished'&&hands2<3000){if(H.startHand(T,rng2))break;hands2++;let g=0;while(H.inBetting(T)&&g++<300){const p=T.seats[T.toAct];const r=rng2();let e=r<.04?H.act(T,p.uid,'raise',p.bet+p.stack):r<.45?H.act(T,p.uid,'fold'):H.act(T,p.uid,T.curBet-p.bet?'call':'check');if(e)H.act(T,p.uid,'fold')}}
+ ok(T.phase==='finished','tournament finished in '+hands2+' hands');ok(T.places.length===7,'7 places');ok(T.places.reduce((a,p)=>a+p.prize,0)<=7000&&T.places[0].prize===3500,'payouts '+T.places.map(p=>p.prize));
+ ok(T.seats.filter(p=>p&&!p.out).length===1,'one winner');console.log('tournament: '+hands2+' hands, winner '+T.places[0].name+' +'+T.places[0].prize)}

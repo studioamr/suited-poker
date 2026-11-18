@@ -34,8 +34,13 @@
     return { v: bv, cards: bc, name: CAT[Math.floor(bv / Math.pow(13, 5))] };
   }
 
+  // estructura de ciegas de torneo: sube cada nivel (multiplicadores sobre la ciega grande inicial)
+  const LEVELS = [1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 100, 150, 200];
+  function payouts(n) { return n <= 4 ? [1] : n <= 6 ? [0.65, 0.35] : [0.5, 0.3, 0.2]; }
   function newTable(cfg, hostUid) {
-    return { v: 1, code: cfg.code, name: cfg.name || 'private table', sb: cfg.sb, bb: cfg.bb, buyin: cfg.buyin, hostUid,
+    return { v: 2, code: cfg.code, name: cfg.name || 'private table', mode: cfg.mode || 'cash', venue: cfg.venue || 0, public: !!cfg.public,
+      sb: cfg.sb, bb: cfg.bb, buyin: cfg.buyin, stack: cfg.stack || cfg.buyin, levelMs: cfg.levelMs || 300000, level: 0, levelAt: 0, bb0: cfg.bb,
+      started: false, places: [], prize: 0, hostUid,
       seats: Array(SEATS).fill(null), button: -1, phase: 'waiting', board: [], curBet: 0, minRaise: 0, toAct: -1,
       handNo: 0, deadline: 0, nextAt: 0, results: null, log: [], priv: { deck: [], holes: {} } };
   }
@@ -46,17 +51,39 @@
   function post(G, i, amt) { const p = G.seats[i], a = Math.max(0, Math.min(amt, p.stack)); p.stack -= a; p.bet += a; p.contrib += a; if (p.stack === 0 && p.inHand) p.allin = true; return a; }
   const pot = G => G.seats.reduce((a, p) => a + (p ? p.contrib : 0), 0);
 
-  function sit(G, { uid, name, seat }) {
+  function sit(G, { uid, name, seat, avatar, lvl }) {
     if (G.seats.some(p => p && p.uid === uid)) return 'you are already seated';
     if (seat < 0 || seat >= SEATS || G.seats[seat]) return 'that seat is taken';
-    G.seats[seat] = { uid, name: String(name || 'player').slice(0, 16), stack: G.buyin, bet: 0, contrib: 0, inHand: false, folded: false, allin: false, acted: false, sitout: false, timeouts: 0, leaving: false };
-    log(G, `${G.seats[seat].name} sat down with ${G.buyin}`); return null;
+    if (G.mode === 'sng' && G.started) return 'this tournament already started';
+    G.seats[seat] = { uid, name: String(name || 'player').slice(0, 16), avatar: typeof avatar === 'string' && avatar.length < 12000 ? avatar : '', lvl: +lvl || 1, stack: G.mode === 'sng' ? G.stack : G.buyin, bet: 0, contrib: 0, inHand: false, folded: false, allin: false, acted: false, sitout: false, timeouts: 0, leaving: false };
+    if (G.mode === 'sng') G.prize += G.buyin;
+    log(G, `${G.seats[seat].name} ${G.mode === 'sng' ? 'registered' : 'sat down with ' + G.buyin}`); return null;
   }
   const eligible = G => G.seats.filter(p => p && p.stack > 0 && !p.sitout && !p.leaving);
   const inBetting = G => ['preflop', 'flop', 'turn', 'river'].includes(G.phase);
 
+  function bust(G) { // torneo: quien se quedó sin fichas queda eliminado, con su lugar
+    if (G.mode !== 'sng' || !G.started) return;
+    const out = G.seats.map((p, i) => [p, i]).filter(([p]) => p && p.stack === 0 && !p.out);
+    out.sort((a, b) => b[0].contrib - a[0].contrib).forEach(([p]) => { p.out = true; p.sitout = true; const left = G.seats.filter(q => q && !q.out).length; G.places.unshift({ uid: p.uid, name: p.name, place: left + 1 }); log(G, `${p.name} is out in place ${left + 1}`); });
+    const alive = G.seats.filter(p => p && !p.out);
+    if (alive.length === 1) {
+      const w = alive[0]; G.places.unshift({ uid: w.uid, name: w.name, place: 1 });
+      const n = G.places.length, pay = payouts(n);
+      G.places.forEach(pl => { pl.prize = pl.place <= pay.length ? Math.floor(G.prize * pay[pl.place - 1]) : 0; });
+      G.phase = 'finished'; G.toAct = -1; log(G, `${w.name} wins the tournament · ${G.places[0].prize}`);
+    }
+  }
   function startHand(G, rng = Math.random) {
-    G.seats.forEach((p, i) => { if (p && p.leaving) G.seats[i] = null; });
+    if (G.phase === 'finished') return 'tournament finished';
+    bust(G); if (G.phase === 'finished') return 'tournament finished';
+    if (G.mode === 'sng') {
+      if (!G.started) { if (eligible(G).length < 2) { G.phase = 'waiting'; return 'waiting for players'; } G.started = true; G.levelAt = Date.now(); log(G, `tournament starts · ${eligible(G).length} players · prize pool ${G.prize}`); }
+      const lv = Math.min(LEVELS.length - 1, Math.floor((Date.now() - G.levelAt) / G.levelMs));
+      if (lv !== G.level) { G.level = lv; log(G, `blinds up · level ${lv + 1}`); }
+      G.bb = Math.round(G.bb0 * LEVELS[G.level]); G.sb = Math.max(1, Math.floor(G.bb / 2));
+    }
+    G.seats.forEach((p, i) => { if (p && p.leaving && !(G.mode === 'sng' && G.started)) G.seats[i] = null; });
     if (eligible(G).length < 2) { G.phase = 'waiting'; G.toAct = -1; return 'waiting for players'; }
     G.seats.forEach(p => { if (p) Object.assign(p, { bet: 0, contrib: 0, folded: false, allin: false, acted: false, inHand: p.stack > 0 && !p.sitout }); });
     const inH = p => p.inHand;
@@ -168,9 +195,9 @@
     p.folded = true; log(G, `${p.name} left and folds`); progress(G, G.toAct - 1 < 0 ? SEATS - 1 : G.toAct - 1);
     return null;
   }
-  function rebuy(G, uid) { const p = G.seats.find(p => p && p.uid === uid); if (!p) return 'not seated'; if (p.stack > 0 || (inBetting(G) && p.inHand && !p.folded)) return 'you still have chips'; p.stack = G.buyin; log(G, `${p.name} rebuys ${G.buyin}`); return null; }
+  function rebuy(G, uid) { if (G.mode === 'sng') return 'no rebuys in tournaments'; const p = G.seats.find(p => p && p.uid === uid); if (!p) return 'not seated'; if (p.stack > 0 || (inBetting(G) && p.inHand && !p.folded)) return 'you still have chips'; p.stack = G.buyin; log(G, `${p.name} rebuys ${G.buyin}`); return null; }
   function sitout(G, uid, on) { const p = G.seats.find(p => p && p.uid === uid); if (!p) return 'not seated'; p.sitout = !!on; if (!on) p.timeouts = 0; return null; }
   function publicView(G) { const o = JSON.parse(JSON.stringify(G)); delete o.priv; o.pot = pot(G); return o; }
 
-  root.Holdem = { SEATS, TURN_MS, RANKS, SUITS, CAT, newTable, sit, startHand, act, timeout, leave, rebuy, sitout, publicView, best, eval5, cardStr, shuffle, inBetting, eligible, pot };
+  root.Holdem = { LEVELS, payouts, bust, SEATS, TURN_MS, RANKS, SUITS, CAT, newTable, sit, startHand, act, timeout, leave, rebuy, sitout, publicView, best, eval5, cardStr, shuffle, inBetting, eligible, pot };
 })(typeof window !== 'undefined' ? window : globalThis);
