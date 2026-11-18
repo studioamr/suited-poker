@@ -5,8 +5,7 @@ window.PRICING = {
   token: { mainnet: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', devnet: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', decimals: 6, symbol: 'USDC' },
   tiers: [ // buy-in en dólares por tarjeta (mismo orden que las mesas)
     { name: 'Classic', usd: 5 }, { name: 'Silver', usd: 25 }, { name: 'Gold', usd: 100 }, { name: 'Platinum', usd: 500 },
-    { name: 'Black', usd: 2000 }, { name: 'Diamond', usd: 10000 }, { name: 'Double Diamond', usd: 25000 },
-    { name: 'Infinite', usd: null, minUsd: 50000, custom: true }],
+    { name: 'Black', usd: 2000 }, { name: 'Diamond', usd: 10000 }, { name: 'Double Diamond', usd: 25000 }],
   entries: [ // torneos: entrada en dólares y tarjeta de mesa
     { k: 'starter', usd: 10, tier: 0 }, { k: 'pro', usd: 50, tier: 2 }, { k: 'high roller', usd: 250, tier: 4 }, { k: 'major', usd: 1000, tier: 6 }],
   px: { mxn: null },
