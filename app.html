@@ -306,11 +306,14 @@ async function unseal(pub,b){return JSON.parse(new TextDecoder().decode(await cr
 
 // ---------- red ----------
 const sb=window.supabase.createClient(SB.url,SB.key,{auth:{persistSession:false}});
-let LOBBY={};const lobby=sb.channel('obsidian-lobby',{config:{presence:{key:UID}}});
-lobby.on('presence',{event:'sync'},()=>{LOBBY={};Object.values(lobby.presenceState()).flat().forEach(t=>{if(t.code)LOBBY[t.code]=t});drawLobby()});
-lobby.subscribe(s=>{if(s==='SUBSCRIBED')setTimeout(drawLobby,1500)});
+let LOBBY={},lobby=null,lobbyOk=false,lastAnn=null;
+function ensureLobby(){if(lobby&&['joined','joining'].includes(lobby.state))return;if(lobby){try{sb.removeChannel(lobby)}catch(e){}}lobbyOk=false;
+ lobby=sb.channel('obsidian-lobby',{config:{presence:{key:UID}}});
+ lobby.on('presence',{event:'sync'},()=>{LOBBY={};Object.values(lobby.presenceState()).flat().forEach(t=>{if(t.code)LOBBY[t.code]=t});drawLobby()});
+ lobby.subscribe(s=>{if(s==='SUBSCRIBED'){lobbyOk=true;if(lastAnn)lobby.track(lastAnn);setTimeout(drawLobby,1500)}})}
+ensureLobby();setInterval(ensureLobby,5000);
 let lastLobbyTrack=0;function announce(force){if(!G||!HOST||!G.public)return;if(!force&&Date.now()-lastLobbyTrack<3000)return;lastLobbyTrack=Date.now();
- lobby.track({code:G.code,name:G.name,mode:G.mode,venue:G.venue,seated:G.seats.filter(Boolean).length,sb:G.sb,bb:G.bb,buyin:G.buyin,started:!!G.started,finished:G.phase==='finished',prize:G.prize||0})}
+ ensureLobby();lastAnn={code:G.code,name:G.name,mode:G.mode,venue:G.venue,seated:G.seats.filter(Boolean).length,sb:G.sb,bb:G.bb,buyin:G.buyin,started:!!G.started,finished:G.phase==='finished',prize:G.prize||0};if(lobbyOk)lobby.track(lastAnn)}
 
 // ---------- lobby ----------
 const CODEC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>CODEC[b%CODEC.length]).join('');
