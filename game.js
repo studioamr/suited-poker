@@ -20,40 +20,33 @@ const VENUES=[
  {room:'Infinite',sb:250000,bb:500000,buy:25000000,lvl:0,felt:'#0d0b07',glow:'#e7c873',metal:'linear-gradient(135deg,#2a2418,#0a0907 45%,#000 60%,#3a2f16)',ink:'#e7c873',custom:true}];
 
 const ENTRIES=PRICING.entries;
-// fichas ↔ SOL: cada mesa guarda cuánto SOL vale su buy-in (G.sol) y cuántas fichas da (G.buyin)
-const CUR={MXN:n=>'$'+Math.round(n).toLocaleString('en-US')+' MXN',USD:n=>'$'+(Math.round(n*100)/100).toLocaleString('en-US')+' USD',SOL:n=>PRICING.fmtSol(n)};
-const M=(n,v=V)=>v&&v.money?CUR[v.money.cur](Math.max(0,n)*v.money.amt/v.buyin):v&&v.sol?PRICING.fmtSol(Math.max(0,n)*v.sol/v.buyin):fmt(n);
-const RPC=()=>PRICING.network==='mainnet'?'https://api.mainnet-beta.solana.com':'https://api.devnet.solana.com';
+// dinero: cada mesa real guarda G.money={usd (lo que cuesta el buy-in o la entrada), bank (wallet del anfitrión), net}. adentro todo son fichas.
+const U=(n,v=V)=>v&&v.money?PRICING.fmtUsd(Math.max(0,n)*v.money.usd/v.buyin):'';
+const M=(n)=>fmt(n);
+const rpcFor=net=>net==='mainnet'?'https://solana-rpc.publicnode.com':'https://api.devnet.solana.com';
 const scan=(sig,net=PRICING.network)=>`https://solscan.io/tx/${sig}${net==='mainnet'?'':'?cluster=devnet'}`;
-const rpcFor=net=>net==='mainnet'?'https://api.mainnet-beta.solana.com':'https://api.devnet.solana.com';
-const mxn=sol=>PRICING.px.mxn?'$'+Math.round(sol*PRICING.px.mxn).toLocaleString('en-US')+' MXN':'';
-let BAL=null;async function balance(){if(!P.wallet||P.wallet.kind!=='sol')return;try{const r=await fetch(RPC(),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getBalance',params:[P.wallet.addr]})});const d=await r.json();BAL=d.result.value/1e9;hdr()}catch(e){}}
+const MINT=net=>PRICING.token[net],DEC=PRICING.token.decimals;
+let BAL=null;async function balance(){if(!P.wallet||P.wallet.kind!=='sol')return;try{const ata=(await ataOf(P.wallet.addr,PRICING.network)).toBase58();const r=await fetch(rpcFor(PRICING.network),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getAccountInfo',params:[ata,{encoding:'jsonParsed'}]})});const d=await r.json();BAL=d.result&&d.result.value?+d.result.value.data.parsed.info.tokenAmount.uiAmount:0;hdr()}catch(e){}}
 setInterval(balance,30000);
-// pagar con Phantom: transferencia real de SOL a la bóveda de la casa, con un memo que dice qué mesa y qué asiento
 let W3=null;async function web3(){if(W3)return W3;await new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://unpkg.com/@solana/web3.js@1.98.0/lib/index.iife.min.js';sc.onload=ok;sc.onerror=ko;document.head.appendChild(sc)});return W3=window.solanaWeb3}
-// una sola transacción con uno o varios pagos (entrada → anfitrión; premios → cada ganador), firmada en Phantom
+const TOKEN_PG='TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',ATA_PG='ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',MEMO_PG='MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr';
+async function ataOf(owner,net){const w=await web3();return w.PublicKey.findProgramAddressSync([new w.PublicKey(owner).toBuffer(),new w.PublicKey(TOKEN_PG).toBuffer(),new w.PublicKey(MINT(net)).toBuffer()],new w.PublicKey(ATA_PG))[0]}
+// una transacción con uno o varios pagos en USDC (buy-in → banco; cash-outs/premios → cada jugador), firmada en Phantom
 async function payTo(list,memo,net){const w=await web3(),pv=window.phantom?.solana||window.solana;if(!pv)throw new Error('Phantom not found');await pv.connect();
- const from=pv.publicKey,conn=new w.Connection(rpcFor(net),'confirmed'),tx=new w.Transaction();
- list.forEach(x=>tx.add(w.SystemProgram.transfer({fromPubkey:from,toPubkey:new w.PublicKey(x.to),lamports:Math.round(x.sol*1e9)})));
- tx.add(new w.TransactionInstruction({keys:[],programId:new w.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),data:new TextEncoder().encode(memo)}));
- const {blockhash,lastValidBlockHeight}=await conn.getLatestBlockhash();tx.recentBlockhash=blockhash;tx.feePayer=from;
+ const from=pv.publicKey,mint=new w.PublicKey(MINT(net)),conn=new w.Connection(rpcFor(net),'confirmed'),tx=new w.Transaction(),src=await ataOf(from.toBase58(),net);
+ for(const x of list){const owner=new w.PublicKey(x.to),dst=await ataOf(x.to,net);
+  tx.add(new w.TransactionInstruction({programId:new w.PublicKey(ATA_PG),keys:[{pubkey:from,isSigner:true,isWritable:true},{pubkey:dst,isSigner:false,isWritable:true},{pubkey:owner,isSigner:false,isWritable:false},{pubkey:mint,isSigner:false,isWritable:false},{pubkey:w.SystemProgram.programId,isSigner:false,isWritable:false},{pubkey:new w.PublicKey(TOKEN_PG),isSigner:false,isWritable:false}],data:new Uint8Array([1])}));
+  const amt=BigInt(Math.round(x.usd*10**DEC)),d=new Uint8Array(10),dv=new DataView(d.buffer);d[0]=12;dv.setBigUint64(1,amt,true);d[9]=DEC;
+  tx.add(new w.TransactionInstruction({programId:new w.PublicKey(TOKEN_PG),keys:[{pubkey:src,isSigner:false,isWritable:true},{pubkey:mint,isSigner:false,isWritable:false},{pubkey:dst,isSigner:false,isWritable:true},{pubkey:from,isSigner:true,isWritable:false}],data:d}))}
+ tx.add(new w.TransactionInstruction({keys:[],programId:new w.PublicKey(MEMO_PG),data:new TextEncoder().encode(memo)}));
+ const {blockhash}=await conn.getLatestBlockhash();tx.recentBlockhash=blockhash;tx.feePayer=from;
  let sig;if(pv.signAndSendTransaction){const r=await pv.signAndSendTransaction(tx);sig=r.signature||r}else{const signed=await pv.signTransaction(tx);sig=await conn.sendRawTransaction(signed.serialize())}
  for(let k=0;k<40;k++){try{const st2=await conn.getSignatureStatuses([sig]);const c=st2.value[0];if(c&&c.err)throw new Error('transaction failed');if(c&&(c.confirmationStatus==='confirmed'||c.confirmationStatus==='finalized'))return sig}catch(e){if(/failed/.test(e.message))throw e}await new Promise(r=>setTimeout(r,1500))}return sig}
-async function paySol(sol,memo){return payTo([{to:PRICING.vault,sol}],memo,PRICING.network)}
-// el anfitrión revisa en la cadena que la entrada sí llegó: de quién, a quién y cuánto
-async function verifyPay(sig,from,to,sol,net){for(let k=0;k<8;k++){try{const r=await fetch(rpcFor(net),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getTransaction',params:[sig,{encoding:'jsonParsed',maxSupportedTransactionVersion:0,commitment:'confirmed'}]})});const d=await r.json();
- if(d.result){if(d.result.meta&&d.result.meta.err)return false;return d.result.transaction.message.instructions.some(ix=>ix.parsed&&ix.parsed.type==='transfer'&&ix.parsed.info.source===from&&ix.parsed.info.destination===to&&ix.parsed.info.lamports>=Math.floor(sol*1e9*.999))}}catch(e){}await new Promise(r=>setTimeout(r,1500))}return false}
+// el banco revisa en la cadena que el pago llegó: de quién, a qué cuenta de USDC y cuánto
+async function verifyPay(sig,from,to,usd,net){const dst=(await ataOf(to,net)).toBase58(),need=Math.floor(usd*10**DEC*.999);
+ for(let k=0;k<8;k++){try{const r=await fetch(rpcFor(net),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getTransaction',params:[sig,{encoding:'jsonParsed',maxSupportedTransactionVersion:0,commitment:'confirmed'}]})});const d=await r.json();
+  if(d.result){if(d.result.meta&&d.result.meta.err)return false;return d.result.transaction.message.instructions.some(ix=>ix.parsed&&(ix.parsed.type==='transferChecked'||ix.parsed.type==='transfer')&&ix.parsed.info.destination===dst&&ix.parsed.info.authority===from&&+(ix.parsed.info.tokenAmount?ix.parsed.info.tokenAmount.amount:ix.parsed.info.amount)>=need)}}catch(e){}await new Promise(r=>setTimeout(r,1500))}return false}
 function ledger(e){(P.ledger=P.ledger||[]).unshift({t:Date.now(),...e});P.ledger.length=Math.min(P.ledger.length,60);saveP()}
-// ventana de buy-in: muestra el precio en SOL y cobra con Phantom
-function buyIn(sol,what,memo,done){const u=PRICING.usd(sol),ready=!!PRICING.vault&&P.wallet&&P.wallet.kind==='sol';
- showOver(`<h3>${esc(what)}</h3><div class="bi-amt"><span class="sol"></span>${PRICING.fmtSol(sol)}</div><p>${u?'≈ '+PRICING.fmtUsd(u)+' · ':''}paid from ${P.wallet?shortW(P.wallet.addr):'your wallet'} on Solana ${PRICING.network}. you approve it in Phantom.</p>
-  <button class="btn w" data-pay ${ready?'':'disabled'}>pay ${PRICING.fmtSol(sol)}</button>
-  ${PRICING.vault?'':'<p style="margin:12px 0 0;font-size:12px;color:#f2cf6b">payments are off: the house vault address isn’t set yet.</p>'}
-  <button class="btn gh w" style="margin-top:8px" data-practice>play this hand with practice chips</button>`);
- window.__buy={sol,memo,done}}
-async function doPay(){const b=window.__buy;if(!b)return;const btn=$('[data-pay]');btn.disabled=true;btn.textContent='approve in Phantom…';
- try{const sig=await paySol(b.sol,b.memo);ledger({type:'buy-in',sol:b.sol,sig,memo:b.memo});$('#over').classList.remove('on');toast('paid · '+PRICING.fmtSol(b.sol));balance();b.done({sig})}
- catch(e){btn.disabled=false;btn.textContent='pay '+PRICING.fmtSol(b.sol);toast(/reject|cancel/i.test(e.message)?'payment cancelled':'payment failed: '+e.message)}}
 
 // ---------- perfil local: monedas de juego, nivel, foto ----------
 const P=Object.assign({name:'',avatar:'',coins:10000,xp:0,hands:0,won:0,best:0,tWins:0,lastBonus:0,inPlay:null,paid:{},counted:{}},st.get('profile',{}));
@@ -61,7 +54,7 @@ const saveP=()=>{st.set('profile',P);hdr()};
 const lvlOf=xp=>Math.floor(Math.sqrt(xp/20))+1,xpFor=l=>20*(l-1)*(l-1);
 const UID=st.get('uid',null)||(()=>{const u='u'+crypto.getRandomValues(new Uint32Array(2)).join('');st.set('uid',u);return u})();
 function avaH(name,img,uid){if(img)return`<img src="${img}" alt="">`;const h=hash(uid||name),c1=`hsl(${h%360} 45% 38%)`,c2=`hsl(${(h>>4)%360} 55% 18%)`;return`<span style="position:absolute;inset:0;background:linear-gradient(135deg,${c1},${c2});display:grid;place-items:center">${esc((name||'?').trim()[0]||'?').toUpperCase()}</span>`}
-function hdr(){$('#coins').textContent=BAL==null?(P.wallet?'…':'—'):BAL.toFixed(3)+' SOL';const wb=document.getElementById('wbtn');if(wb){wb.textContent=P.wallet?shortW(P.wallet.addr):'connect wallet';wb.classList.toggle('on',!!P.wallet)}$('#mylv').textContent=lvlOf(P.xp);$('#myava').innerHTML=avaH(P.name,P.avatar,UID)}
+function hdr(){$('#coins').textContent=BAL==null?(P.wallet?'…':'—'):PRICING.fmtUsd(BAL)+' USDC';const wb=document.getElementById('wbtn');if(wb){wb.textContent=P.wallet?shortW(P.wallet.addr):'connect wallet';wb.classList.toggle('on',!!P.wallet)}$('#mylv').textContent=lvlOf(P.xp);$('#myava').innerHTML=avaH(P.name,P.avatar,UID)}
 function addCoins(n,why){P.coins+=n;saveP();if(n>0&&why)toast(`+${fmt(n)} coins · ${why}`)}
 function bonus(){const d=new Date().toDateString();if(P.lastBonus===d)return toast('you already claimed today’s bonus. come back tomorrow.');P.lastBonus=d;addCoins(2000,'daily bonus')}
 // fichas que quedaron en una mesa que cerraste sin levantarte
@@ -100,11 +93,12 @@ let lastLobbyTrack=0;function announce(force){if(!G||!HOST||!G.public)return;if(
 // ---------- lobby ----------
 const CODEC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>CODEC[b%CODEC.length]).join('');
 const SPADE='<svg viewBox="0 0 24 24"><path d="M12 2C9 6 4 9 4 13.2A4.3 4.3 0 0011.3 16c-.3 2.2-1.2 3.9-2.8 5h7c-1.6-1.1-2.5-2.8-2.8-5A4.3 4.3 0 0020 13.2C20 9 15 6 12 2z" fill="currentColor"/></svg>';
-function drawVenues(){$('#venues').innerHTML=VENUES.map((v,i)=>{if(v.custom){const ms=PRICING.minSol(PRICING.tiers[i]);return`<div class="tier inf" data-infinite style="--metal:${v.metal};--ink:${v.ink};--glow:${v.glow};--felt:${v.felt}"><div class="tcard2"><div class="sheen"></div><div class="tc-top"><span class="tc-brand">${SPADE}SUITED</span><span class="tc-chip"></span></div><div class="tc-name">Infinite</div><div class="tc-bot"><span>by invitation</span><span>your stakes</span></div></div><div class="tinfo"><div><b>from $50K</b><span>≈ ${ms.toLocaleString('en-US')} SOL · private table, you set the buy-in</span></div><span class="tplay" style="border-color:rgba(231,200,115,.4);color:#e7c873">private</span></div></div>`}const sol=PRICING.tiers[i].sol,u=PRICING.usd(sol),n=Object.values(LOBBY).filter(t=>t.venue===i&&t.mode!=='sng').reduce((a,t)=>a+t.seated,0);return`<div class="tier" data-quick="${i}" style="--metal:${v.metal};--ink:${v.ink};--glow:${v.glow};--felt:${v.felt}">
-  <div class="tcard2"><div class="sheen"></div><div class="tc-top"><span class="tc-brand">${SPADE}SUITED</span><span class="tc-chip"></span></div><div class="tc-name">${v.room}</div><div class="tc-bot"><span>buy-in</span><span>${PRICING.fmtSol(sol)}</span></div></div>
-  <div class="tinfo"><div><b>${PRICING.fmtSol(sol)}</b><span>${u?'≈ '+PRICING.fmtUsd(u)+' · ':''}${i>=5&&PRICING.btc(sol)?PRICING.fmtBtc(PRICING.btc(sol))+' · ':''}${v.room}</span></div><span class="tplay"><i></i>${n} seated</span></div></div>`}).join('');
- $('#pvVenue').innerHTML=VENUES.map((v,i)=>v.custom?'':`<option value="${i}">${v.room} · ${PRICING.fmtSol(PRICING.tiers[i].sol)}</option>`).join('');
- $('#entries').innerHTML=ENTRIES.map((e,i)=>`<div class="tc ${i===(+st.get('entry',0))?'on':''}" data-entry="${i}"><div class="k">${e.k} · ${VENUES[e.tier].room} card</div><div class="v"><span class="sol"></span>${PRICING.fmtSol(e.sol)}</div><div class="s">entry · 1st place up to ${PRICING.fmtSol(e.sol*9*.5*(1-PRICING.rake))}</div></div>`).join('')}
+function drawVenues(){$('#venues').innerHTML=VENUES.map((v,i)=>{const tr=PRICING.tiers[i],n=Object.values(LOBBY).filter(t=>t.venue===i&&t.mode!=='sng').reduce((a,t)=>a+t.seated,0);
+  if(v.custom)return`<div class="tier inf" data-infinite style="--metal:${v.metal};--ink:${v.ink};--glow:${v.glow};--felt:${v.felt}"><div class="tcard2"><div class="sheen"></div><div class="tc-top"><span class="tc-brand">${SPADE}SUITED</span><span class="tc-chip"></span></div><div class="tc-name">Infinite</div><div class="tc-bot"><span>by invitation</span><span>your stakes</span></div></div><div class="tinfo"><div><b>from $50K</b><span>private table · you set the buy-in</span></div><span class="tplay" style="border-color:rgba(231,200,115,.4);color:#e7c873">private</span></div></div>`;
+  return`<div class="tier" data-quick="${i}" style="--metal:${v.metal};--ink:${v.ink};--glow:${v.glow};--felt:${v.felt}"><div class="tcard2"><div class="sheen"></div><div class="tc-top"><span class="tc-brand">${SPADE}SUITED</span><span class="tc-chip"></span></div><div class="tc-name">${v.room}</div><div class="tc-bot"><span>buy-in</span><span>${PRICING.fmtUsd(tr.usd)}</span></div></div>
+  <div class="tinfo"><div><b>${PRICING.fmtUsd(tr.usd)}</b><span>${fmt(v.buy)} chips · blinds ${short(v.sb)}/${short(v.bb)}</span></div><span class="tplay"><i></i>${n} seated</span></div></div>`}).join('');
+ $('#pvVenue').innerHTML=VENUES.map((v,i)=>v.custom?'':`<option value="${i}">${v.room} · ${PRICING.fmtUsd(PRICING.tiers[i].usd)}</option>`).join('');
+ $('#entries').innerHTML=ENTRIES.map((e,i)=>`<div class="tc ${i===(+st.get('entry',0))?'on':''}" data-entry="${i}"><div class="k">${e.k} · ${VENUES[e.tier].room} table</div><div class="v">${PRICING.fmtUsd(e.usd)}</div><div class="s">entry · 9 players = ${PRICING.fmtUsd(e.usd*9)} prize pool</div></div>`).join('')}
 function seatsBar(n){return`<span class="seatsbar">${Array.from({length:9},(_,i)=>`<i class="${i<n?'f':''}"></i>`).join('')}</span>`}
 function drawLobby(){const T=Object.values(LOBBY);const cash=T.filter(t=>t.mode!=='sng'),sng=T.filter(t=>t.mode==='sng'&&!t.started&&!t.finished);
  $('#liveN').textContent=cash.length?`· ${cash.length}`:'';
@@ -121,13 +115,13 @@ async function connectWallet(kind){try{let addr;
  else{if(!window.ethereum){window.open('https://metamask.io/download/','_blank','noopener');return toast('install MetaMask, then come back')}const a=await window.ethereum.request({method:'eth_requestAccounts'});addr=a[0]}
  P.wallet={kind,addr};if(!P.name)P.name=shortW(addr);saveP();balance();$('#over').classList.remove('on');toast('wallet connected · '+shortW(addr));if(CODE)enterTable(CODE)}catch(e){toast('connection cancelled')}}
 function needName(){if(P.name)return true;showOver(`<h3>pick your table name</h3><p>other players will see this name.</p><input class="in" id="oName" maxlength="16" placeholder="your name"><div style="height:12px"></div><button class="btn w" data-setname>continue</button>`);setTimeout(()=>$('#oName')?.focus(),50);return false}
-function createTable(cfg){const code=newCode(),Gn=H.newTable({code,...cfg},UID);if(cfg.sol)Gn.sol=cfg.sol;if(cfg.money){Gn.money=cfg.money;Gn.paid={};Gn.bank=P.name}st.set('host.'+code,Gn);location.hash='#t/'+code}
+function createTable(cfg){if(cfg.money&&(!P.wallet||P.wallet.kind!=='sol')){walletModal();return}const code=newCode(),Gn=H.newTable({code,...cfg},UID);if(cfg.money){Gn.money={usd:cfg.money.usd,bank:P.wallet.addr,net:PRICING.network};Gn.paid={};Gn.bank=P.name;Gn.cashouts=[]}st.set('host.'+code,Gn);location.hash='#t/'+code}
 function quick(i){const v=VENUES[i];if(!needName())return;
  const t=Object.values(LOBBY).filter(t=>t.mode!=='sng'&&t.venue===i&&t.seated<9).sort((a,b)=>b.seated-a.seated)[0];
- if(t)location.hash='#t/'+t.code;else createTable({name:`${v.room} #${Math.floor(Math.random()*90+10)}`,mode:'cash',venue:i,public:true,sb:v.sb,bb:v.bb,buyin:v.buy,sol:PRICING.tiers[i].sol})}
+ if(t)location.hash='#t/'+t.code;else createTable({name:`${v.room} #${Math.floor(Math.random()*90+10)}`,mode:'cash',venue:i,public:true,sb:v.sb,bb:v.bb,buyin:v.buy,money:{usd:PRICING.tiers[i].usd}})}
 
 // ---------- perfil ----------
-function drawProfile(){const tx=$('#pTx');if(tx)tx.innerHTML=(P.ledger||[]).length?P.ledger.map(e=>`<div class="txr"><span class="tt ${e.type==='buy-in'?'out':'in'}">${e.type}</span><span class="m">${e.type==='buy-in'?'−':'+'}${PRICING.fmtSol(e.sol)}</span><span class="dim2">${e.sig?`<a href="${scan(e.sig,e.net||PRICING.network)}" target="_blank" rel="noopener">view on Solscan</a>`:esc(e.status||'')}</span></div>`).join(''):'<div class="empty">no transactions yet</div>';const L=lvlOf(P.xp),a=xpFor(L),b=xpFor(L+1);$('#pAva').innerHTML=avaH(P.name,P.avatar,UID);$('#pName').value=P.name;$('#pXp').style.width=((P.xp-a)/(b-a)*100)+'%';$('#pLv').textContent=`level ${L} · ${fmt(P.xp-a)} / ${fmt(b-a)} xp to level ${L+1}`;
+function drawProfile(){const tx=$('#pTx');if(tx)tx.innerHTML=(P.ledger||[]).length?P.ledger.map(e=>`<div class="txr"><span class="tt ${e.type==='buy-in'?'out':'in'}">${e.type}</span><span class="m">${e.type==='buy-in'?'−':'+'}${PRICING.fmtUsd(Math.abs(e.usd||0))}</span><span class="dim2">${e.sig?`<a href="${scan(e.sig,e.net||PRICING.network)}" target="_blank" rel="noopener">view on Solscan</a>`:esc(e.status||'')}</span></div>`).join(''):'<div class="empty">no transactions yet</div>';const L=lvlOf(P.xp),a=xpFor(L),b=xpFor(L+1);$('#pAva').innerHTML=avaH(P.name,P.avatar,UID);$('#pName').value=P.name;$('#pXp').style.width=((P.xp-a)/(b-a)*100)+'%';$('#pLv').textContent=`level ${L} · ${fmt(P.xp-a)} / ${fmt(b-a)} xp to level ${L+1}`;
  $('#pStats').innerHTML=[[(P.ledger||[]).filter(e=>e.type==='buy-in').length,'buy-ins'],[fmt(P.hands),'hands played'],[fmt(P.won),'pots won'],[fmt(P.best),'biggest pot'],[fmt(P.tWins),'tournaments won'],[P.hands?Math.round(P.won/P.hands*100)+'%':'—','win rate']].map(([x,y])=>`<div><b>${x}</b><span>${y}</span></div>`).join('');
  $('#road').innerHTML=VENUES.map(v=>`<div class="${L>=v.lvl?'ok':''}"><b>${v.room}</b>${L>=v.lvl?'unlocked':'level '+v.lvl}<div style="color:var(--mut);margin-top:4px">${short(v.sb)}/${short(v.bb)}</div></div>`).join('')}
 $('#pName').onchange=e=>{P.name=e.target.value.trim().slice(0,16);saveP()};
@@ -152,10 +146,12 @@ function send(type,d){const p={type,uid:UID,name:P.name,pub:KEYS.pub,...d};if(HO
 function reply(p,e){if(p.uid===UID)onErr(e,p.type);else ch.send({type:'broadcast',event:'err',payload:{to:p.uid,e,type:p.type}})}
 function handle(p){if(!G)return;let e=null;if(p.pub)PUBS[p.uid]={...(PUBS[p.uid]||{}),uid:p.uid,name:p.name,pub:p.pub};
  if(p.type==='hello'){commit();sendHole(p.uid);return}
- if(p.type==='sit'&&G.money&&G.money.auto&&p.uid!==G.hostUid){G.used=G.used||{};if(!p.sig||G.used[p.sig]){reply(p,'payment missing');return}
-  verifyPay(p.sig,p.wallet,G.money.bank,G.money.amt,G.money.net).then(ok=>{if(!ok){reply(p,'payment not found on-chain. ask the host for help.');return}G.used[p.sig]=1;const e2=H.sit(G,{uid:p.uid,name:p.name,seat:p.seat,avatar:p.avatar,lvl:p.lvl});
-   if(e2){reply(p,e2+' · your entry was received, the host can refund it');return}const st2=G.seats[p.seat];st2.wallet=p.wallet;G.paid=G.paid||{};G.paid[p.uid]=p.sig;commit()});return}
- if(p.type==='sit'){e=H.sit(G,{uid:p.uid,name:p.name,seat:p.seat,avatar:p.avatar,lvl:p.lvl});if(!e&&p.wallet){const s2=G.seats[p.seat];s2.wallet=p.wallet;if(G.money&&G.money.auto&&p.uid===G.hostUid){G.paid=G.paid||{};G.paid[p.uid]='host'}}}
+ if((p.type==='sit'||p.type==='rebuy')&&G.money&&p.uid!==G.hostUid){G.used=G.used||{};if(!p.sig||G.used[p.sig]){reply(p,'payment missing');return}
+  verifyPay(p.sig,p.wallet,G.money.bank,G.money.usd,G.money.net).then(ok=>{if(!ok){reply(p,'payment not found on-chain. ask the bank for help.');return}G.used[p.sig]=1;
+   const e2=p.type==='sit'?H.sit(G,{uid:p.uid,name:p.name,seat:p.seat,avatar:p.avatar,lvl:p.lvl}):H.rebuy(G,p.uid);if(e2){reply(p,e2+' · your payment arrived: the bank can refund it');return}
+   if(p.type==='sit')G.seats[p.seat].wallet=p.wallet;G.paid=G.paid||{};G.paid[p.uid]=p.sig;commit()});return}
+ if(p.type==='leave'&&G.money&&G.mode==='cash'&&p.uid!==G.hostUid){const s3=G.seats.find(x=>x&&x.uid===p.uid);if(s3&&s3.stack>0&&s3.wallet)(G.cashouts=G.cashouts||[]).push({uid:p.uid,name:s3.name,wallet:s3.wallet,chips:s3.stack,usd:Math.floor(s3.stack*G.money.usd/G.buyin*100)/100})}
+ if(p.type==='sit'){e=H.sit(G,{uid:p.uid,name:p.name,seat:p.seat,avatar:p.avatar,lvl:p.lvl});if(!e&&p.wallet){const s2=G.seats[p.seat];s2.wallet=p.wallet;if(G.money&&p.uid===G.hostUid){G.paid=G.paid||{};G.paid[p.uid]='host'}}}
  else if(p.type==='act')e=H.act(G,p.uid,p.a,p.amount);
  else if(p.type==='leave')e=H.leave(G,p.uid);
  else if(p.type==='rebuy')e=H.rebuy(G,p.uid);
@@ -165,7 +161,7 @@ function handle(p){if(!G)return;let e=null;if(p.pub)PUBS[p.uid]={...(PUBS[p.uid]
  if(e){if(p.uid===UID)onErr(e,p.type);else ch.send({type:'broadcast',event:'err',payload:{to:p.uid,e,type:p.type}});return e}commit();return null}
 let PEND=null;function onErr(e,type){toast(e);if((type==='sit'||type==='rebuy')&&PEND){P.coins+=PEND;PEND=null;if(type==='sit')P.inPlay=null;saveP()}}
 function hostTick(){if(!G)return;let c=false;if(H.timeout(G))c=true;
- if(G.phase==='waiting'){const need=G.mode==='sng'?Math.min(9,Math.max(2,G.minStart||2)):2;if(H.eligible(G).length>=need&&!(G.money&&!G.go)){if(!G.nextAt)G.nextAt=Date.now()+(G.mode==='sng'?8000:2500);else if(Date.now()>G.nextAt){G.nextAt=0;H.startHand(G);c=true}}else G.nextAt=0}
+ if(G.phase==='waiting'){const need=G.mode==='sng'?Math.min(9,Math.max(2,G.minStart||2)):2;if(H.eligible(G).length>=need&&!(G.mode==='sng'&&G.money&&!G.go)){if(!G.nextAt)G.nextAt=Date.now()+(G.mode==='sng'?8000:2500);else if(Date.now()>G.nextAt){G.nextAt=0;H.startHand(G);c=true}}else G.nextAt=0}
  else if(G.phase==='showdown'&&Date.now()>G.nextAt){H.startHand(G);c=true}
  if(c)commit();else if(Date.now()-lastState>4000)commit();announce()}
 async function sendHole(uid){if(!G||(!H.inBetting(G)&&G.phase!=='showdown'))return;const i=G.seats.findIndex(p=>p&&p.uid===uid),cards=G.priv.holes[i];if(!cards)return;
@@ -177,24 +173,24 @@ let SEENPAY='';function onState(){const v=HOST?H.publicView(G):G;if(!v)return;if
  if(me&&v.mode!=='sng'){P.inPlay={code:CODE,stack:me.stack+(H.inBetting(v)&&me.inHand?0:0)};}
  if(v.phase==='showdown'&&me&&me.inHand&&!P.counted[CODE+':'+v.handNo]){P.counted[CODE+':'+v.handNo]=1;P.hands++;P.xp+=2;const R=v.results;const w=R.pots.filter(pt=>pt.winners.includes(i));if(w.length){const amt=w.reduce((a,pt)=>a+Math.floor(pt.amount/pt.winners.length),0);P.won++;P.xp+=10;P.best=Math.max(P.best,amt);winCard(amt,me.contrib||0,w[0].hand,v)}
   const ks=Object.keys(P.counted);if(ks.length>300)ks.slice(0,ks.length-300).forEach(k=>delete P.counted[k]);saveP()}
- if(v.phase==='finished'&&!P.paid[CODE]){const pl=(v.places||[]).find(x=>x.uid===UID);if(pl){P.paid[CODE]=1;P.xp+=pl.place===1?120:pl.prize?50:10;if(pl.place===1)P.tWins++;if(pl.prize){if(v.money){toast(`${['','1st','2nd','3rd'][pl.place]||pl.place+'th'} place · ${M(pl.prize,v)}`)}const sol=!v.money&&v.sol?pl.prize*v.sol/v.buyin*(1-PRICING.rake):0;if(sol)ledger({type:'prize',sol,status:'pending settlement',memo:`suited:${CODE}:place${pl.place}`});toast(`${['','1st','2nd','3rd'][pl.place]||pl.place+'th'} place · ${sol?PRICING.fmtSol(sol):fmt(pl.prize)}`)}saveP();showFinished(v)}}
+ if(v.phase==='finished'&&!P.paid[CODE]){const pl=(v.places||[]).find(x=>x.uid===UID);if(pl){P.paid[CODE]=1;P.xp+=pl.place===1?120:pl.prize?50:10;if(pl.place===1)P.tWins++;if(pl.prize){toast(`${['','1st','2nd','3rd'][pl.place]||pl.place+'th'} place · ${U(pl.prize,v)||fmt(pl.prize)+' chips'}`);if(v.money)ledger({type:'prize',usd:Math.floor(pl.prize*v.money.usd/v.buyin*100)/100,status:'paid by the bank',memo:v.name})}saveP();showFinished(v)}}
  render()}
 let HSTART={};function winCard(amt,put0,hand,v){const k=CODE+':'+v.handNo,t0=HSTART[k]||Date.now()-30000,secs=Math.max(1,Math.round((Date.now()-t0)/1000)),profit=amt-put0,pct=put0?profit/put0*100:0;
  const el=$('#wincard');el.innerHTML=`<div class="wc-h">pot won <svg viewBox="0 0 24 24"><path d="M12 2l2.4 2.1 3.2-.3.7 3.1 2.8 1.6-1.3 2.9 1.3 2.9-2.8 1.6-.7 3.1-3.2-.3L12 22l-2.4-2.1-3.2.3-.7-3.1-2.8-1.6L4.2 12 2.9 9.1l2.8-1.6.7-3.1 3.2.3z" fill="#d4a63a"/><path d="M8 12.5l2.6 2.5L16 9.5" fill="none" stroke="#fff" stroke-width="2"/></svg></div>
   <div class="wc-big"><span class="wc-coin"></span><span id="wcN">0</span></div><div class="wc-d"><span class="up">+${M(profit,v)}</span>${put0?`<span class="chipup">+${pct.toFixed(0)}%</span>`:''}</div>
   <div class="wc-s">${hand?'won with <b>'+esc(hand)+'</b>':'everyone else folded'}</div><div class="wc-row"><span>hand took</span><b>${secs} seconds</b></div>`;
- el.classList.remove('on');void el.offsetWidth;el.classList.add('on');const n=$('#wcN'),t1=performance.now();(function f(x){const k2=Math.min(1,(x-t1)/900),e=1-Math.pow(1-k2,3);n.textContent=v.sol?(amt*e*v.sol/v.buyin).toFixed(3):fmt(Math.round(amt*e));if(k2<1)requestAnimationFrame(f)})(t1);
+ el.classList.remove('on');void el.offsetWidth;el.classList.add('on');const n=$('#wcN'),t1=performance.now();(function f(x){const k2=Math.min(1,(x-t1)/900),e=1-Math.pow(1-k2,3);n.textContent=fmt(Math.round(amt*e));if(k2<1)requestAnimationFrame(f)})(t1);
  confetti();snd(880,.12);setTimeout(()=>snd(1320,.18),120);clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),4200)}
 function confetti(){const c=document.createElement('canvas');c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:70';document.body.appendChild(c);const d=devicePixelRatio;c.width=innerWidth*d;c.height=innerHeight*d;const x=c.getContext('2d');x.scale(d,d);
  const Q=Array.from({length:110},()=>({x:innerWidth/2,y:innerHeight*.55,vx:(Math.random()-.5)*13,vy:-Math.random()*13-4,r:Math.random()*6+3,c:['#58bc89','#22e07a','#fff','#e7c873','#b6f5d0'][Math.random()*5|0],a:Math.random()*6}));let n=0;
  (function f(){x.clearRect(0,0,innerWidth,innerHeight);Q.forEach(p=>{p.vy+=.34;p.x+=p.vx;p.y+=p.vy;p.a+=.2;x.save();x.translate(p.x,p.y);x.rotate(p.a);x.fillStyle=p.c;x.fillRect(-p.r/2,-p.r/4,p.r,p.r/2);x.restore()});if(++n<120)requestAnimationFrame(f);else c.remove()})()}
 // fondo de ciudad con efectos (lluvia neón, luciérnagas, chispas, reflectores, linternas, estrellas)
 let SCN=-1;function scene(vi){if(vi===SCN)return;SCN=vi;const v=VENUES[vi]||VENUES[0],el=$('#scene');el.style.setProperty('--glow',v.glow);$('#room').style.setProperty('--felt',v.felt);$('#room').style.setProperty('--glow',v.glow);el.querySelector('.cname').textContent=v.room}
-async function payout(){const v=V;if(!v||!v.money||!v.money.auto||v.hostUid!==UID)return;const list=(v.places||[]).filter(pl=>pl.prize>0).map(pl=>{const s2=v.seats.find(x=>x&&x.uid===pl.uid);return{to:s2&&s2.wallet,sol:Math.floor(pl.prize*v.money.amt/v.buyin*1e9)/1e9,name:pl.name}}).filter(x=>x.to&&x.to!==v.money.bank);
+async function payout(){const v=V;if(!v||!v.money||v.hostUid!==UID)return;const list=(v.places||[]).filter(pl=>pl.prize>0).map(pl=>{const s2=v.seats.find(x=>x&&x.uid===pl.uid);return{to:s2&&s2.wallet,usd:Math.floor(pl.prize*v.money.usd/v.buyin*100)/100,name:pl.name}}).filter(x=>x.to&&x.to!==v.money.bank);
  const b=$('[data-payout]');if(!list.length){G.payout='host';commit();return toast('you won it: the prize is already in your wallet')}b.disabled=true;b.textContent='approve in Phantom…';
- try{const sig=await payTo(list,`suited:${CODE}:payout`,v.money.net);G.payout=sig;ledger({type:'prize',sol:-list.reduce((a,x)=>a+x.sol,0),sig,net:v.money.net,memo:'payout '+v.name});commit();showFinished(H.publicView(G));toast('winners paid')}
+ try{const sig=await payTo(list,`suited:${CODE}:payout`,v.money.net);G.payout=sig;ledger({type:'payout',usd:list.reduce((a,x)=>a+x.usd,0),sig,net:v.money.net,memo:'prizes '+v.name});commit();showFinished(H.publicView(G));toast('winners paid')}
  catch(e){b.disabled=false;b.textContent='pay winners';toast('payout failed: '+e.message)}}
-function showFinished(v){showOver(`<h3>${esc(v.name)} · final results</h3><p>prize pool ${M(v.prize,v)}${v.money?` · ${esc(v.bank||'the host')} pays the winners below`:''}</p><div class="places">${v.places.map(pl=>`<div class="${pl.uid===UID?'me':''}"><span>${pl.place}. ${esc(pl.name)}</span><b class="m">${pl.prize?'+'+M(pl.prize*(v.money?1:1-PRICING.rake),v):'—'}</b></div>`).join('')}</div>${v.money&&v.money.auto?(v.payout?`<p style="color:var(--g);margin:0 0 12px">winners paid ✓ ${v.payout!=='host'?`· <a href="${scan(v.payout,v.money.net)}" target="_blank" rel="noopener" style="color:var(--g)">view on Solscan</a>`:''}</p>`:v.hostUid===UID?`<button class="btn w" data-payout style="margin-bottom:8px">pay winners · one approval in Phantom</button>`:`<p style="margin:0 0 12px">waiting for ${esc(v.bank||'the host')} to send the prizes…</p>`):''}<button class="btn w ${v.money&&v.money.auto&&!v.payout&&v.hostUid===UID?'gh':''}" data-back>back to lobby</button>`)}
+function showFinished(v){showOver(`<h3>${esc(v.name)} · final results</h3><p>prize pool ${U(v.prize,v)||fmt(v.prize)+' chips'}${v.money?` · ${esc(v.bank||'the host')} pays the winners below`:''}</p><div class="places">${v.places.map(pl=>`<div class="${pl.uid===UID?'me':''}"><span>${pl.place}. ${esc(pl.name)}</span><b class="m">${pl.prize?'+'+(U(pl.prize,v)||fmt(pl.prize)):'—'}</b></div>`).join('')}</div>${v.money?(v.payout?`<p style="color:var(--g);margin:0 0 12px">winners paid ✓ ${v.payout!=='host'?`· <a href="${scan(v.payout,v.money.net)}" target="_blank" rel="noopener" style="color:var(--g)">view on Solscan</a>`:''}</p>`:v.hostUid===UID?`<button class="btn w" data-payout style="margin-bottom:8px">pay winners · one approval in Phantom</button>`:`<p style="margin:0 0 12px">waiting for ${esc(v.bank||'the host')} to send the prizes…</p>`):''}<button class="btn w ${v.money&&!v.payout&&v.hostUid===UID?'gh':''}" data-back>back to lobby</button>`)}
 
 const SUIT={s:'♠︎',h:'♥︎',d:'♦︎',c:'♣︎'};
 function cardH(c,cls=''){if(c==null)return`<div class="card back ${cls}"></div>`;const r=H.RANKS[c%13],s=H.SUITS[Math.floor(c/13)];return`<div class="card ${s==='h'||s==='d'?'red':''} ${cls}"><span class="r">${r==='T'?'10':r}</span><span class="c">${SUIT[s]}</span><span class="s">${SUIT[s]}</span></div>`}
@@ -209,8 +205,9 @@ function render(){if(!CODE)return;const v=HOST&&G?H.publicView(G):G;if(!v)return
  const ven=VENUES[v.venue]||VENUES[0];
  put($('#rtop'),`<button class="pill" data-copy><svg viewBox="0 0 24 24"><path d="M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>invite · <span class="m">${CODE}</span></button><button class="pill" data-mute>${st.get('mute',0)?'sound off':'sound on'}</button>`);
  const lvLeft=v.mode==='sng'&&v.started?Math.max(0,v.levelMs-((Date.now()-v.levelAt)%v.levelMs)):0;
- const isHost=v.hostUid===UID,paidList=v.money?v.seats.filter(Boolean).map(p=>`<div class="pr ${v.paid&&v.paid[p.uid]?'ok':''}">${v.money.auto?`<i>${v.paid&&v.paid[p.uid]?(v.paid[p.uid]==='host'?'bank':'paid ✓'):'…'}</i>`:isHost?`<button data-markpaid="${p.uid}">${v.paid&&v.paid[p.uid]?'paid ✓':'mark paid'}</button>`:`<i>${v.paid&&v.paid[p.uid]?'paid':'not paid'}</i>`}<span>${esc(p.name)}</span></div>`).join(''):'';
- put($('#hud'),`${v.money?`<div class="chip2 bank"><b>${CUR[v.money.cur](v.money.amt*v.seats.filter(Boolean).length)}</b> pot${v.money.auto&&mxn(v.money.amt*v.seats.filter(Boolean).length)?' ≈ '+mxn(v.money.amt*v.seats.filter(Boolean).length):''} · entry ${CUR[v.money.cur](v.money.amt)} · bank: ${esc(v.bank||'host')}${v.money.auto?` · ${v.money.net==='mainnet'?'real SOL':'test SOL'}`:''}${paidList?`<div class="plist">${paidList}</div>`:''}</div>`:''}<div class="chip2">${esc(v.name)}</div><div class="chip2">${ven.room} · blinds <b>${short(v.sb)}/${short(v.bb)}</b></div>${v.mode==='sng'?`<div class="chip2">level ${v.level+1}${v.started?` · next in ${Math.floor(lvLeft/60000)}:${String(Math.floor(lvLeft/1000)%60).padStart(2,'0')}`:''}</div><div class="chip2">prize pool <b>${M(v.prize,v)}</b> · ${v.seats.filter(p=>p&&!p.out).length} left</div>`:`<div class="chip2">buy-in <b>${v.sol?PRICING.fmtSol(v.sol):fmt(v.buyin)}</b></div>`}`);
+ const isHost=v.hostUid===UID,paidList=v.money?v.seats.filter(Boolean).map(p=>`<div class="pr ${v.paid&&v.paid[p.uid]?'ok':''}"><i>${v.paid&&v.paid[p.uid]?(v.paid[p.uid]==='host'?'bank':'paid ✓'):'…'}</i><span>${esc(p.name)}</span></div>`).join(''):'';
+ const cashPend=v.money?(v.cashouts||[]).filter(c=>!c.sig):[];
+ put($('#hud'),`${v.money?`<div class="chip2 bank">${v.mode==='sng'?`<b>${PRICING.fmtUsd(v.money.usd*v.seats.filter(Boolean).length)}</b> prize pool · entry ${PRICING.fmtUsd(v.money.usd)}`:`buy-in <b>${PRICING.fmtUsd(v.money.usd)}</b> = ${fmt(v.buyin)} chips`} · bank: ${esc(v.bank||'host')} · ${v.money.net==='mainnet'?'USDC':'test USDC'}${paidList&&v.mode==='sng'?`<div class="plist">${paidList}</div>`:''}</div>`:''}<div class="chip2">${esc(v.name)}</div><div class="chip2">${ven.room} · blinds <b>${short(v.sb)}/${short(v.bb)}</b></div>${v.mode==='sng'?`<div class="chip2">level ${v.level+1}${v.started?` · next in ${Math.floor(lvLeft/60000)}:${String(Math.floor(lvLeft/1000)%60).padStart(2,'0')}`:''}</div><div class="chip2">${v.seats.filter(p=>p&&!p.out).length} players left</div>`:''}`);
  const mob=innerWidth<=820,my=v.seats.findIndex(p=>p&&p.uid===UID),rot=my>=0?my:0,fr=$('#rail').getBoundingClientRect(),cx=fr.left+fr.width/2,cy=fr.top+fr.height/2;
  const Pp=i=>{const a=(90+((i-rot+9)%9)*40)*Math.PI/180;return{x:cx+fr.width/2*(mob?1.02:1.0)*Math.cos(a),y:cy+fr.height/2*(mob?1.0:1.04)*Math.sin(a)}};
  const Bp=i=>{const a=Pp(i);return{x:a.x+(cx-a.x)*.4,y:a.y+(cy-a.y)*.38}};
@@ -226,7 +223,7 @@ function render(){if(!CODE)return;const v=HOST&&G?H.publicView(G):G;if(!v)return
   if(put(s.querySelector('.hc'),cards)&&cards){s.querySelectorAll('.hc .card').forEach(c=>c.classList.add('new'));sCard()}
   put(s.querySelector('.av .ava'),avaH(p.name,p.avatar,p.uid));put(s.querySelector('.av .lv'),String(p.lvl||1));
   s.querySelector('.av').style.setProperty('--t',turn?Math.max(0,(v.deadline-Date.now())/H.TURN_MS*100)+'%':'0%');
-  put(s.querySelector('.nm'),esc(p.name)+(PUBS[p.uid]?'':' <span style="color:#666">· away</span>'));put(s.querySelector('.st'),`<span class="sol" style="width:11px;height:11px"></span>${M(p.stack,v)}`);
+  put(s.querySelector('.nm'),esc(p.name)+(PUBS[p.uid]?'':' <span style="color:#666">· away</span>'));put(s.querySelector('.st'),`<span class="coin" style="width:11px;height:11px"></span>${M(p.stack,v)}`);
   const tg=s.querySelector('.tag');const tag=p.out?['out','aw']:p.allin&&p.inHand&&!p.folded?['all-in','']:winners.has(i)&&show?['winner','win']:p.sitout?['away','aw']:null;
   tg.style.display=tag?'block':'none';if(tag){tg.textContent=tag[0];tg.className='tag '+tag[1]}
   put(s.querySelector('.hn'),show&&Rs.hands&&Rs.hands[i]?esc(Rs.hands[i]):'');
@@ -236,15 +233,15 @@ function render(){if(!CODE)return;const v=HOST&&G?H.publicView(G):G;if(!v)return
  NODES.board.forEach((el,k)=>{const h=bd[k]!=null?cardH(bd[k],show&&winCards.size?(winCards.has(bd[k])?'win':'dim'):''):'<div class="card slot"></div>';if(put(el,h)&&bd[k]!=null){el.firstChild.classList.add('new');el.firstChild.style.animationDelay=(k<3&&bd.length===3?k*90:0)+'ms';sCard()}});
  const inMid=(v.pot||0)-v.seats.reduce((a,p)=>a+(p?p.bet:0),0),potShow=show?Rs.pots.reduce((a,p)=>a+p.amount,0):inMid;
  put($('#potw'),v.phase==='waiting'||v.phase==='finished'||!potShow?'':`${stack(potShow)}<span class="pot">pot ${M(potShow,v)}</span>`);
- put($('#msg'),esc(v.phase==='waiting'?(v.seats.filter(Boolean).length<2?(v.money?'share the invite. the host starts the tournament when everyone is seated.':v.mode==='sng'?'waiting for players to register. starts with 2 or more.':'waiting for players. share the invite.'):(v.money&&!v.go?'everyone seated? the host taps start.':v.mode==='sng'?'tournament starting…':'dealing…')):v.phase==='finished'?`${v.places?.[0]?.name||''} wins the tournament`:show?Rs.pots.map(pt=>`${pt.winners.map(i=>v.seats[i]?.name).join(' & ')} ${pt.winners.length>1?'split':'wins'} ${M(pt.amount,v)}${pt.hand?' · '+pt.hand:''}`).join('  ·  '):''));
+ put($('#msg'),esc(v.phase==='waiting'?(v.seats.filter(Boolean).length<2?(v.money&&v.mode==='sng'?'share the invite. the host starts the tournament when everyone is seated.':v.mode==='sng'?'waiting for players to register. starts with 2 or more.':'waiting for players. share the invite.'):(v.money&&v.mode==='sng'&&!v.go?'everyone seated? the host taps start.':v.mode==='sng'?'tournament starting…':'dealing…')):v.phase==='finished'?`${v.places?.[0]?.name||''} wins the tournament`:show?Rs.pots.map(pt=>`${pt.winners.map(i=>v.seats[i]?.name).join(' & ')} ${pt.winners.length>1?'split':'wins'} ${M(pt.amount,v)}${pt.hand?' · '+pt.hand:''}`).join('  ·  '):''));
  put($('#log'),(v.log||[]).slice(-16).reverse().map(t=>`<div>${esc(t)}</div>`).join(''));
  const mp=my>=0?v.seats[my]:null;
- const hostStart=v.money&&v.hostUid===UID&&!v.started&&!v.go?`<button class="pill" data-start style="background:var(--g);color:#03130a;border-color:var(--g)">start tournament · ${v.seats.filter(Boolean).length} players</button>`:'';
- put($('#mybar'),hostStart+(mp?`<button class="pill" data-leave>${v.mode==='sng'&&v.started&&!mp.out?'leave (forfeit)':'stand up'}</button>${v.mode!=='sng'&&mp.stack===0&&!(H.inBetting(v)&&mp.inHand&&!mp.folded)?`<button class="pill" data-rebuy>rebuy ${v.sol?PRICING.fmtSol(v.sol):short(v.buyin)}</button>`:''}${v.mode!=='sng'?`<button class="pill" data-sitout="${mp.sitout?0:1}">${mp.sitout?'i’m back':'sit out'}</button>`:''}`:''));
+ const hostStart=(v.money&&v.mode==='sng'&&v.hostUid===UID&&!v.started&&!v.go?`<button class="pill" data-start style="background:var(--g);color:#03130a;border-color:var(--g)">start tournament · ${v.seats.filter(Boolean).length} players</button>`:'')+(v.money&&v.hostUid===UID&&cashPend.length?`<button class="pill" data-paycash style="background:#e7c873;color:#1a1405;border-color:#e7c873">pay cash-outs · ${cashPend.length} · ${PRICING.fmtUsd(cashPend.reduce((a,c)=>a+c.usd,0))}</button>`:'');
+ put($('#mybar'),hostStart+(mp?`<button class="pill" data-leave>${v.mode==='sng'&&v.started&&!mp.out?'leave (forfeit)':'stand up'}</button>${v.mode!=='sng'&&mp.stack===0&&!(H.inBetting(v)&&mp.inHand&&!mp.folded)?`<button class="pill" data-rebuy>rebuy ${v.money?PRICING.fmtUsd(v.money.usd):short(v.buyin)}</button>`:''}${v.mode!=='sng'?`<button class="pill" data-sitout="${mp.sitout?0:1}">${mp.sitout?'i’m back':'sit out'}</button>`:''}`:''));
  actsUI(v,my)}
 let actKey='';function actsUI(v,my){const el=$('#acts'),p=my>=0?v.seats[my]:null,on=!!p&&H.inBetting(v)&&v.toAct===my;el.classList.toggle('on',on);if(!on){actKey='';return}
  const toCall=v.curBet-p.bet,maxTo=p.bet+p.stack,minTo=Math.min(maxTo,v.curBet+v.minRaise),pot=v.pot;
- put($('#actHave'),`<i class="sol"></i><b>${M(p.stack,v)}</b> in front of you`);$('#tipAct').classList.toggle('off',!!st.get('tipAct',0));
+ put($('#actHave'),`<i class="coin"></i><b>${M(p.stack,v)}</b> in front of you`);$('#tipAct').classList.toggle('off',!!st.get('tipAct',0));
  $('#bcall').textContent=toCall>0?(toCall>=p.stack?`all-in ${M(p.stack,v)}`:`call ${M(toCall,v)}`):'check';
  const k=v.handNo+'|'+v.phase+'|'+v.curBet+'|'+my,rr=$('#rr'),ra=$('#ra');
  if(k!==actKey){actKey=k;rr.min=minTo;rr.max=maxTo;rr.step=Math.max(1,v.sb);rr.value=minTo;ra.value=minTo;
@@ -253,21 +250,25 @@ let actKey='';function actsUI(v,my){const el=$('#acts'),p=my>=0?v.seats[my]:null
  const to=Math.max(minTo,Math.min(maxTo,+ra.value||minTo));rr.style.setProperty('--p',((to-minTo)/Math.max(1,maxTo-minTo)*100)+'%');
  $('#braise').textContent=maxTo<=v.curBet?'—':to>=maxTo?`all-in ${M(maxTo,v)}`:`${v.curBet===0?'bet':'raise to'} ${M(to,v)}`;$('#braise').disabled=maxTo<=v.curBet}
 $('#rr').oninput=e=>{$('#ra').value=e.target.value;render()};$('#ra').oninput=()=>render();
-function infiniteModal(){if(!needName())return;const ms=PRICING.minSol(PRICING.tiers[7]);
- showOver(`<h3>Infinite table</h3><p>a private table at the stakes you set. minimum $50,000 per buy-in (≈ ${ms.toLocaleString('en-US')} SOL today). only people with the code can sit.</p>
-  <label class="f"><span>buy-in per player (SOL)</span><input class="in m" id="infSol" inputmode="decimal" value="${ms}"></label><div class="m" id="infUsd" style="font-size:12px;color:var(--mut);margin:-6px 0 12px"></div>
+function infiniteModal(){if(!needName())return;
+ showOver(`<h3>Infinite table</h3><p>a private table at the stakes you set, from $50,000 per buy-in. your wallet is the bank; only people with the code can sit.</p>
+  <label class="f"><span>buy-in per player (USD)</span><input class="in m" id="infUsdIn" inputmode="decimal" value="50000"></label><div class="m" id="infMx" style="font-size:12px;color:var(--mut);margin:-6px 0 12px"></div>
   <label class="f"><span>table name</span><input class="in" id="infName" maxlength="30" placeholder="the vault"></label>
   <button class="btn w" data-mkinf style="background:linear-gradient(180deg,#f3d68a,#c99a3a);color:#1a1405">create Infinite table</button>`);
- const up=()=>{const v=+$('#infSol').value||0,u=PRICING.usd(v);$('#infUsd').textContent=u?`≈ ${PRICING.fmtUsd(u)}${u<50000?' · below the $50K minimum':''}`:''};$('#infSol').oninput=up;up()}
+ const up=()=>{const v=+$('#infUsdIn').value||0;$('#infMx').textContent=(PRICING.fmtMxn(v)||'')+(v<50000?' · below the $50K minimum':'')};$('#infUsdIn').oninput=up;up()}
 function trySit(i){const v=V;if(!v)return;
- if(v.money&&v.money.auto){if(!P.wallet||P.wallet.kind!=='sol')return walletModal();
+ if(v.money){if(!P.wallet||P.wallet.kind!=='sol')return walletModal();
   if(v.hostUid===UID){send('sit',{seat:i,avatar:P.avatar,lvl:lvlOf(P.xp),wallet:P.wallet.addr});return}
-  showOver(`<h3>${esc(v.name)}</h3><div class="bi-amt"><span class="sol"></span>${PRICING.fmtSol(v.money.amt)}</div><p>${mxn(v.money.amt)?'≈ '+mxn(v.money.amt)+' · ':''}entry paid from your Phantom straight to ${esc(v.bank||'the host')}’s wallet (${shortW(v.money.bank)}) on Solana ${v.money.net==='mainnet'?'(real SOL)':'devnet (test SOL)'}. you’re seated as soon as the payment confirms.</p><button class="btn w" data-apay="${i}">pay &amp; take seat ${i+1}</button>`);return}
- if(v.money){showOver(`<h3>${esc(v.name)}</h3><div class="bi-amt">${CUR[v.money.cur](v.money.amt)}</div><p>entry for this tournament. pay it to <b style="color:#fff">${esc(v.bank||'the host')}</b> (bank transfer, cash or crypto). the host marks you as paid.</p><button class="btn w" data-msit="${i}">take seat ${i+1}</button>`);return}
- if(!P.wallet)return walletModal();
- const go=r=>{PEND=null;if(v.mode!=='sng')P.inPlay={code:CODE,stack:v.buyin,real:!!(r&&r.sig)};saveP();send('sit',{seat:i,avatar:P.avatar,lvl:lvlOf(P.xp),sig:r&&r.sig||''})};
- buyIn(v.sol||0,v.mode==='sng'?'tournament entry · '+v.name:'buy-in · '+v.name,`suited:${CODE}:seat${i}:${v.mode}`,go)}
-function standUp(){const v=V,i=v?v.seats.findIndex(p=>p&&p.uid===UID):-1;if(i>=0&&v.mode!=='sng'){const s=v.seats[i];const sol=v.sol?s.stack*v.sol/v.buyin:0;if(sol>0&&P.inPlay&&P.inPlay.real){ledger({type:'cash-out',sol,status:'pending settlement',memo:`suited:${CODE}`});toast(`cash-out ${PRICING.fmtSol(sol)} requested · sent to your wallet at settlement`)}P.inPlay=null;saveP()}send('leave',{})}
+  showOver(`<h3>${esc(v.name)}</h3><div class="bi-amt">${PRICING.fmtUsd(v.money.usd)}</div><p>${v.mode==='sng'?'tournament entry':'buy-in · you get '+fmt(v.buyin)+' chips'}${PRICING.fmtMxn(v.money.usd)?' · '+PRICING.fmtMxn(v.money.usd):''}. paid in ${v.money.net==='mainnet'?'USDC':'test USDC'} from your Phantom straight to ${esc(v.bank||'the host')}’s wallet (${shortW(v.money.bank)}). you’re seated as soon as it confirms.</p><button class="btn w" data-apay="${i}">pay ${PRICING.fmtUsd(v.money.usd)} &amp; take seat ${i+1}</button>`);return}
+ send('sit',{seat:i,avatar:P.avatar,lvl:lvlOf(P.xp)})}
+async function payAnd(type,seat,btn){const v=V;if(btn){btn.disabled=true;btn.textContent='approve in Phantom…'}
+ try{const sig=await payTo([{to:v.money.bank,usd:v.money.usd}],`suited:${CODE}:${UID}:${type}`,v.money.net);ledger({type:type==='rebuy'?'rebuy':'buy-in',usd:v.money.usd,sig,net:v.money.net,memo:v.name});if(btn)btn.textContent='confirming…';
+  send(type,{seat,avatar:P.avatar,lvl:lvlOf(P.xp),sig,wallet:P.wallet.addr});setTimeout(()=>$('#over').classList.remove('on'),1200);balance()}
+ catch(e){if(btn){btn.disabled=false;btn.textContent='try again'}toast(/reject|cancel/i.test(e.message)?'payment cancelled':'payment failed: '+e.message)}}
+async function payCash(){const v=V;if(!v||v.hostUid!==UID)return;const pend=(G.cashouts||[]).filter(c=>!c.sig&&c.wallet);if(!pend.length)return;
+ try{const sig=await payTo(pend.map(c=>({to:c.wallet,usd:c.usd})),`suited:${CODE}:cashout`,v.money.net);pend.forEach(c=>c.sig=sig);ledger({type:'cash-outs',usd:pend.reduce((a,c)=>a+c.usd,0),sig,net:v.money.net,memo:v.name});commit();toast('cash-outs paid')}
+ catch(e){toast(/reject|cancel/i.test(e.message)?'payment cancelled':'payment failed: '+e.message)}}
+function standUp(){const v=V,i=v?v.seats.findIndex(p=>p&&p.uid===UID):-1;if(i>=0&&v.money&&v.mode==='cash'&&v.hostUid!==UID){const s=v.seats[i];if(s.stack>0){ledger({type:'cash-out',usd:Math.floor(s.stack*v.money.usd/v.buyin*100)/100,status:'paid by the bank',memo:v.name});toast(`cash-out ${U(s.stack,v)} · the bank sends it to your wallet`)}}P.inPlay=null;saveP();send('leave',{})}
 function showOver(h){$('#overIn').innerHTML=h;$('#over').classList.add('on')}
 document.addEventListener('click',e=>{const t=e.target;
  const s=t.closest('[data-sit]');if(s){trySit(+s.dataset.sit);return}
@@ -276,17 +277,15 @@ document.addEventListener('click',e=>{const t=e.target;
  if(t.closest('[data-copy]')){navigator.clipboard?.writeText(location.origin+location.pathname+'#t/'+CODE).then(()=>toast('invite link copied'));return}
  if(t.closest('[data-mute]')){st.set('mute',st.get('mute',0)?0:1);render();return}
  if(t.closest('[data-leave]')){standUp();return}
- if(t.closest('[data-rebuy]')){buyIn(V.sol||0,'rebuy · '+V.name,`suited:${CODE}:rebuy`,()=>send('rebuy',{}));return}
- if(t.closest('[data-pay]')){doPay();return}
- const ap=t.closest('[data-apay]');if(ap){(async()=>{const i=+ap.dataset.apay,v=V;if(v.seats[i])return toast('that seat was just taken, pick another');ap.disabled=true;ap.textContent='approve in Phantom…';
-  try{const sig=await payTo([{to:v.money.bank,sol:v.money.amt}],`suited:${CODE}:${UID}`,v.money.net);ledger({type:'buy-in',sol:v.money.amt,sig,net:v.money.net,memo:'entry '+v.name});ap.textContent='confirming…';send('sit',{seat:i,avatar:P.avatar,lvl:lvlOf(P.xp),sig,wallet:P.wallet.addr});setTimeout(()=>$('#over').classList.remove('on'),1200)}
-  catch(e){ap.disabled=false;ap.textContent='pay & take seat '+(i+1);toast(/reject|cancel/i.test(e.message)?'payment cancelled':'payment failed: '+e.message)}})();return}
+ if(t.closest('[data-rebuy]')){if(V.money&&V.hostUid!==UID)payAnd('rebuy',null,null);else send('rebuy',{});return}
+ if(t.closest('[data-paycash]')){payCash();return}
+ const ap=t.closest('[data-apay]');if(ap){const i=+ap.dataset.apay;if(V.seats[i])return toast('that seat was just taken, pick another');payAnd('sit',i,ap);return}
  if(t.closest('[data-payout]')){payout();return}
  const ms=t.closest('[data-msit]');if(ms){$('#over').classList.remove('on');send('sit',{seat:+ms.dataset.msit,avatar:P.avatar,lvl:lvlOf(P.xp)});return}
  if(t.closest('[data-start]')){send('start',{});return}
  const mp2=t.closest('[data-markpaid]');if(mp2){send('paid',{who:mp2.dataset.markpaid});return}
  if(t.closest('[data-infinite]')){infiniteModal();return}
- if(t.closest('[data-mkinf]')){const v=+$('#infSol').value||0,ms=PRICING.minSol(PRICING.tiers[7]);if(v<ms)return toast(`the minimum is ${ms.toLocaleString('en-US')} SOL ($50K)`);const vv=VENUES[7];$('#over').classList.remove('on');createTable({name:$('#infName').value.trim()||'Infinite table',mode:'cash',venue:7,public:false,sb:vv.sb,bb:vv.bb,buyin:vv.buy,sol:v});return}
+ if(t.closest('[data-mkinf]')){const v=+$('#infUsdIn').value||0;if(v<50000)return toast('the minimum is $50,000');const vv=VENUES[7];$('#over').classList.remove('on');createTable({name:$('#infName').value.trim()||'Infinite table',mode:'cash',venue:7,public:false,sb:vv.sb,bb:vv.bb,buyin:vv.buy,money:{usd:v}});return}
  if(t.closest('[data-practice]')){$('#over').classList.remove('on');const b=window.__buy;if(b)b.done({});return}
  const so=t.closest('[data-sitout]');if(so){send('sitout',{on:so.dataset.sitout==='1'});return}
  if(t.closest('[data-back]')){if(V&&V.seats.some(p=>p&&p.uid===UID)&&V.mode!=='sng')standUp();setTimeout(()=>{location.hash='#play';location.reload()},150);return}
@@ -294,13 +293,10 @@ document.addEventListener('click',e=>{const t=e.target;
  const q=t.closest('[data-quick]');if(q){quick(+q.dataset.quick);return}
  const op=t.closest('[data-open]');if(op){if(!needName())return;location.hash='#t/'+op.dataset.open;return}
  if(t.closest('[data-join]')){if(!needName())return;const c=$('#jcode').value.trim().toUpperCase();if(!/^[A-Z0-9]{6}$/.test(c))return toast('codes have 6 characters');location.hash='#t/'+c;return}
- if(t.closest('[data-mkpriv]')){if(!needName())return;const i=+$('#pvVenue').value,v=VENUES[i];createTable({name:$('#pvName').value.trim()||'private table',mode:'cash',venue:i,public:false,sb:v.sb,bb:v.bb,buyin:v.buy,sol:PRICING.tiers[i].sol});return}
- const en=t.closest('[data-entry]');if(en){st.set('entry',+en.dataset.entry);drawVenues();return}
- if(t.closest('[data-mkt]')){if(!needName())return;const e2=ENTRIES[+st.get('entry',0)];const stck=+$('#tStack').value;const mode=$('#tMoney').value;if(mode==='wallets'){if(!P.wallet||P.wallet.kind!=='sol')return walletModal();let amt=+$('#tAmt').value;const cur=$('#tCur').value;if(!(amt>0))return toast('type the entry amount');
-   if(cur!=='SOL'){const r=cur==='MXN'?PRICING.px.mxn:PRICING.px.sol;if(!r)return toast('loading the SOL price, try again in a second');amt=Math.round(amt/r*1e4)/1e4}
-   createTable({name:$('#tName').value.trim()||'friends tournament',mode:'sng',venue:Math.min(6,+$('#tCard').value||0),public:false,sb:Math.max(1,Math.round(stck/150)),bb:Math.max(2,Math.round(stck/75)),buyin:1000,stack:stck,levelMs:+$('#tSpeed').value,money:{amt,cur:'SOL',auto:true,bank:P.wallet.addr,net:$('#tNet').value}});return}
-  if(mode==='friends'){const amt=+$('#tAmt').value;if(!(amt>0))return toast('type the entry amount');createTable({name:$('#tName').value.trim()||'friends tournament',mode:'sng',venue:Math.min(6,+$('#tCard').value||0),public:false,sb:Math.max(1,Math.round(stck/150)),bb:Math.max(2,Math.round(stck/75)),buyin:1000,stack:stck,levelMs:+$('#tSpeed').value,money:{amt,cur:$('#tCur').value}});return}
-  createTable({name:$('#tName').value.trim()||`${e2.k} sit & go`,mode:'sng',venue:e2.tier,public:$('#tPub').value==='1',sb:Math.max(1,Math.round(stck/150)),bb:Math.max(2,Math.round(stck/75)),buyin:1000,sol:e2.sol,stack:stck,levelMs:+$('#tSpeed').value});return}
+ if(t.closest('[data-mkpriv]')){if(!needName())return;const i=+$('#pvVenue').value,v=VENUES[i];createTable({name:$('#pvName').value.trim()||'private table',mode:'cash',venue:i,public:false,sb:v.sb,bb:v.bb,buyin:v.buy,money:{usd:PRICING.tiers[i].usd}});return}
+ const en=t.closest('[data-entry]');if(en){st.set('entry',+en.dataset.entry);drawVenues();const ta=$('#tAmt');if(ta)ta.value=ENTRIES[+en.dataset.entry].usd;return}
+ if(t.closest('[data-mkt]')){if(!needName())return;const e2=ENTRIES[+st.get('entry',0)];const stck=+$('#tStack').value;const real=$('#tMoney').value!=='practice';const usd=+$('#tAmt').value||e2.usd;if(real&&!(usd>0))return toast('type the entry amount');
+  createTable({name:$('#tName').value.trim()||`${e2.k} sit & go`,mode:'sng',venue:Math.min(6,+$('#tCard').value||e2.tier),public:$('#tPub').value==='1',sb:Math.max(1,Math.round(stck/150)),bb:Math.max(2,Math.round(stck/75)),buyin:1000,stack:stck,levelMs:+$('#tSpeed').value,...(real?{money:{usd}}:{})});return}
  const cw=t.closest('[data-cw]');if(cw){connectWallet(cw.dataset.cw);return}
  if(t.closest('[data-wallet]')){if(P.wallet){if(confirm('disconnect '+shortW(P.wallet.addr)+'?')){P.wallet=null;saveP()}}else walletModal();return}
  if(t.closest('[data-setname]')){const n=$('#oName').value.trim();if(!n)return;P.name=n.slice(0,16);saveP();$('#over').classList.remove('on');if(CODE)enterTable(CODE);return}

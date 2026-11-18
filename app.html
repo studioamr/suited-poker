@@ -230,7 +230,7 @@ body.inroom .top{display:none}
 
 <main class="main">
 <section class="page" id="pg-play">
- <div class="hero" style="background:linear-gradient(90deg,#040706 25%,rgba(4,7,6,.55) 60%,rgba(4,7,6,.2)),url(img/cash.jpg) center/cover"><div class="k">cash games · texas hold'em · 9 seats</div><h1>pick your table.<br>play your tier.</h1><p>from 0.05 SOL to Double Diamond. pick the card you want to play, pay the buy-in from your wallet and take a seat.</p>
+ <div class="hero" style="background:linear-gradient(90deg,#040706 25%,rgba(4,7,6,.55) 60%,rgba(4,7,6,.2)),url(img/cash.jpg) center/cover"><div class="k">cash games · texas hold'em · 9 seats</div><h1>pick your table.<br>play your tier.</h1><p>from $5 to Double Diamond. pick your card, pay the buy-in in dollars from your wallet and play with chips.</p>
   <div class="cta"><button class="btn" data-quick="0">quick seat</button><a class="btn gh" href="#tourneys">tournaments</a></div></div>
  <h2 class="sec"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/></svg>tables <span>tap a card to sit</span></h2>
  <div class="venues" id="venues"></div>
@@ -244,7 +244,7 @@ body.inroom .top{display:none}
 </section>
 
 <section class="page" id="pg-tourneys">
- <div class="hero" style="background:linear-gradient(90deg,#040706 25%,rgba(4,7,6,.55) 60%,rgba(4,7,6,.2)),url(img/sng.jpg) center/cover"><div class="k">sit &amp; go</div><h1>nine players.<br>one winner.</h1><p>pay the entry in SOL, everyone starts even, blinds rise every few minutes. the top three split the prize pool.</p></div>
+ <div class="hero" style="background:linear-gradient(90deg,#040706 25%,rgba(4,7,6,.55) 60%,rgba(4,7,6,.2)),url(img/sng.jpg) center/cover"><div class="k">sit &amp; go</div><h1>nine players.<br>one winner.</h1><p>pay the entry in dollars from your wallet, everyone starts even, blinds rise every few minutes. the top three split the prize pool.</p></div>
  <h2 class="sec"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>open now <span id="tN"></span></h2>
  <div class="tl" id="liveT"><div class="empty">no tournaments open. create one below.</div></div>
  <h2 class="sec"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>create a tournament</h2>
@@ -254,14 +254,13 @@ body.inroom .top{display:none}
    <div class="r3"><label class="f"><span>starting stack</span><select class="in" id="tStack"><option value="1500">1,500</option><option value="3000" selected>3,000</option><option value="5000">5,000</option></select></label>
    <label class="f"><span>blinds rise every</span><select class="in" id="tSpeed"><option value="180000">3 min · turbo</option><option value="300000" selected>5 min</option><option value="480000">8 min · deep</option></select></label>
    <label class="f"><span>who can join</span><select class="in" id="tPub"><option value="1">anyone</option><option value="0">invite only</option></select></label></div>
-   <div class="r3"><label class="f"><span>money</span><select class="in" id="tMoney"><option value="wallets">wallets · automatic (SOL)</option><option value="friends">real money, I collect by hand</option><option value="sol">SOL buy-in (house)</option></select></label>
-   <label class="f"><span>entry per player</span><input class="in m" id="tAmt" inputmode="decimal" value="500"></label>
-   <label class="f"><span>currency</span><select class="in" id="tCur"><option>MXN</option><option>USD</option><option>SOL</option></select></label></div>
-   <label class="f"><span>network</span><select class="in" id="tNet"><option value="mainnet">real SOL</option><option value="devnet">test SOL (devnet)</option></select></label>
+   <div class="r2"><label class="f"><span>money</span><select class="in" id="tMoney"><option value="real">real money · USDC</option><option value="practice">practice · free chips</option></select></label>
+   <label class="f"><span>entry per player (USD)</span><input class="in m" id="tAmt" inputmode="decimal" value="10"></label></div>
+   
    <label class="f"><span>table card</span><select class="in" id="tCard"><option value="0">Classic</option><option value="1">Silver</option><option value="2">Gold</option><option value="3">Platinum</option><option value="4">Black</option><option value="5">Diamond</option><option value="6">Double Diamond</option></select></label>
    <label class="f"><span>tournament name</span><input class="in" id="tName" maxlength="30" placeholder="sunday major"></label>
    <button class="btn w" data-mkt>create tournament</button></div>
-  <div class="box"><h3>prize split</h3><p>the prize pool is every entry added together, minus a 5% house fee, paid in SOL.</p>
+  <div class="box"><h3>prize split</h3><p>the prize pool is every entry added together, paid in USDC by the bank.</p>
    <div class="pay"><div><b>50%</b><span>1st</span></div><div><b>30%</b><span>2nd</span></div><div><b>20%</b><span>3rd</span></div></div>
    <p style="margin:12px 0 0;font-size:12px">5 or 6 players: 65% / 35%. 4 or fewer: winner takes all.</p></div>
  </div>
@@ -275,7 +274,7 @@ body.inroom .top{display:none}
    <div class="xp"><i id="pXp"></i></div><div class="m" style="font-size:12px;color:var(--mut)" id="pLv"></div>
    <button class="btn gh w" style="margin-top:16px" data-wallet>wallet</button></div>
   <div><div class="stats" id="pStats"></div><h2 class="sec">your road</h2><div class="road" id="road"></div>
-   <div class="box" style="margin-top:14px"><h3>transactions</h3><p>buy-ins, cash-outs and prizes on Solana.</p><div id="pTx"></div></div></div>
+   <div class="box" style="margin-top:14px"><h3>transactions</h3><p>buy-ins, cash-outs and prizes in USDC.</p><div id="pTx"></div></div></div>
  </div>
 </section>
 </main>
@@ -303,9 +302,9 @@ body.inroom .top{display:none}
 <div class="over" id="over"><div class="mi" id="overIn"></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.80.0/dist/umd/supabase.min.js"></script>
-<script src="pricing.js?v=1795044811"></script>
-<script src="engine.js?v=1795044811"></script>
-<script src="game.js?v=1795044811"></script>
+<script src="pricing.js?v=1795045360"></script>
+<script src="engine.js?v=1795045360"></script>
+<script src="game.js?v=1795045360"></script>
 
 </body>
 </html>
