@@ -204,6 +204,8 @@ body.inroom .top{display:none}
  .acts{left:12px;right:12px;bottom:12px;width:auto}.mybar{bottom:auto;top:58px;left:auto;right:10px;flex-direction:column;align-items:flex-end}}
 .by{font:600 9px 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--g2);align-self:flex-end;margin:0 0 3px 2px}
 .tier.inf .tcard2{box-shadow:inset 0 0 0 1px rgba(231,200,115,.55),0 14px 30px rgba(0,0,0,.5),0 0 40px -10px rgba(231,200,115,.45)}.tier.inf .tc-name{background:linear-gradient(180deg,#fff3c4,#e7c873 50%,#9a7a2a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.chip2.bank{border-color:rgba(43,212,125,.4)}.chip2.bank b{color:var(--g);font-size:13px}
+.plist{display:flex;flex-direction:column;gap:4px;margin-top:8px}.pr{display:flex;align-items:center;gap:8px;font-weight:600}.pr button,.pr i{font:800 10px Manrope;font-style:normal;padding:3px 8px;border-radius:6px;background:rgba(255,107,107,.15);color:#ffb3b3;border:0}.pr.ok button,.pr.ok i{background:rgba(43,212,125,.18);color:var(--g)}
 </style>
 </head>
 <body>
@@ -252,6 +254,10 @@ body.inroom .top{display:none}
    <div class="r3"><label class="f"><span>starting stack</span><select class="in" id="tStack"><option value="1500">1,500</option><option value="3000" selected>3,000</option><option value="5000">5,000</option></select></label>
    <label class="f"><span>blinds rise every</span><select class="in" id="tSpeed"><option value="180000">3 min · turbo</option><option value="300000" selected>5 min</option><option value="480000">8 min · deep</option></select></label>
    <label class="f"><span>who can join</span><select class="in" id="tPub"><option value="1">anyone</option><option value="0">invite only</option></select></label></div>
+   <div class="r3"><label class="f"><span>money</span><select class="in" id="tMoney"><option value="friends">real money with friends</option><option value="sol">SOL buy-in</option></select></label>
+   <label class="f"><span>entry per player</span><input class="in m" id="tAmt" inputmode="decimal" value="500"></label>
+   <label class="f"><span>currency</span><select class="in" id="tCur"><option>MXN</option><option>USD</option><option>SOL</option></select></label></div>
+   <label class="f"><span>table card</span><select class="in" id="tCard"><option value="0">Classic</option><option value="1">Silver</option><option value="2">Gold</option><option value="3">Platinum</option><option value="4">Black</option><option value="5">Diamond</option><option value="6">Double Diamond</option></select></label>
    <label class="f"><span>tournament name</span><input class="in" id="tName" maxlength="30" placeholder="sunday major"></label>
    <button class="btn w" data-mkt>create tournament</button></div>
   <div class="box"><h3>prize split</h3><p>the prize pool is every entry added together, minus a 5% house fee, paid in SOL.</p>
