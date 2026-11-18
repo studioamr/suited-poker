@@ -217,7 +217,7 @@ function render(){if(!CODE)return;const v=HOST&&G?H.publicView(G):G;if(!v){retur
   if(p.bet>0){const b=B(i);h+=`<div class="bet" style="left:${b.x}px;top:${b.y}px"><span class="chip"></span>${fmt(p.bet)}</div>`}});
  if(v.button>=0&&v.phase!=='waiting'){const a=P(v.button),b=B(v.button);h+=`<div class="dealer" style="left:${a.x+(b.x-a.x)*.55+26}px;top:${a.y+(b.y-a.y)*.55}px">D</div>`}
  setH($('#seats'),h);const ti=document.querySelector('.seat.turn .tm i');if(ti&&H.inBetting(v))ti.style.transform=`scaleX(${Math.max(0,(v.deadline-Date.now())/H.TURN_MS)})`;
- const bd=v.board||[];setH($('#board'),[0,1,2,3,4].map(k=>bd[k]!=null?cardH(bd[k],winCards.has(bd[k])?'win':''):'<div class="card slot"></div>').join(''));
+ const bd=v.phase==='waiting'?[]:(v.board||[]);setH($('#board'),[0,1,2,3,4].map(k=>bd[k]!=null?cardH(bd[k],winCards.has(bd[k])?'win':''):'<div class="card slot"></div>').join(''));
  const potInMiddle=(v.pot||0)-v.seats.reduce((a,p)=>a+(p?p.bet:0),0);$('#pot').innerHTML=v.phase==='waiting'?'':`pot <b>${fmt(v.phase==='showdown'?R.pots.reduce((a,p)=>a+p.amount,0):potInMiddle)}</b>`;
  $('#msg').textContent=v.phase==='waiting'?(v.seats.filter(Boolean).length<2?'waiting for players. share the invite link.':'starting…'):v.phase==='showdown'?R.pots.map(pt=>`${pt.winners.map(i=>v.seats[i]?.name).join(' & ')} ${pt.winners.length>1?'split':'wins'} ${fmt(pt.amount)}${pt.hand?' · '+pt.hand:''}`).join('  ·  '):'';
  setH($('#log'),(v.log||[]).slice(-14).reverse().map(t=>`<div>${esc(t)}</div>`).join(''));
