@@ -37,7 +37,8 @@ async function payTo(list,memo,net){const w=await web3(),pv=window.phantom?.sola
  list.forEach(x=>tx.add(w.SystemProgram.transfer({fromPubkey:from,toPubkey:new w.PublicKey(x.to),lamports:Math.round(x.sol*1e9)})));
  tx.add(new w.TransactionInstruction({keys:[],programId:new w.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),data:new TextEncoder().encode(memo)}));
  const {blockhash,lastValidBlockHeight}=await conn.getLatestBlockhash();tx.recentBlockhash=blockhash;tx.feePayer=from;
- const signed=await pv.signTransaction(tx);const sig=await conn.sendRawTransaction(signed.serialize());await conn.confirmTransaction({signature:sig,blockhash,lastValidBlockHeight},'confirmed');return sig}
+ let sig;if(pv.signAndSendTransaction){const r=await pv.signAndSendTransaction(tx);sig=r.signature||r}else{const signed=await pv.signTransaction(tx);sig=await conn.sendRawTransaction(signed.serialize())}
+ for(let k=0;k<40;k++){try{const st2=await conn.getSignatureStatuses([sig]);const c=st2.value[0];if(c&&c.err)throw new Error('transaction failed');if(c&&(c.confirmationStatus==='confirmed'||c.confirmationStatus==='finalized'))return sig}catch(e){if(/failed/.test(e.message))throw e}await new Promise(r=>setTimeout(r,1500))}return sig}
 async function paySol(sol,memo){return payTo([{to:PRICING.vault,sol}],memo,PRICING.network)}
 // el anfitrión revisa en la cadena que la entrada sí llegó: de quién, a quién y cuánto
 async function verifyPay(sig,from,to,sol,net){for(let k=0;k<8;k++){try{const r=await fetch(rpcFor(net),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'getTransaction',params:[sig,{encoding:'jsonParsed',maxSupportedTransactionVersion:0,commitment:'confirmed'}]})});const d=await r.json();
