@@ -3,166 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>OBSIDIAN · Poker Room</title>
-<meta name="description" content="OBSIDIAN is a Texas Hold'em poker room: private tables for 9, Sit & Go tournaments, six cities to climb, your profile and level. play free with coins.">
+<title>SIXTH · Poker</title>
+<meta name="description" content="SIXTH: Texas Hold'em with 9 seats. private tables, Sit & Go tournaments and six cities to climb. play free.">
 <meta name="theme-color" content="#000000">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#030304;--ink:#f4f4f5;--mut:#8d8d96;--dim:#5a5a63;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.15);--gold:#e7c873}
-*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--ink);font:400 15px/1.5 Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-a{color:inherit;text-decoration:none}button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
-.m{font-family:'Geist Mono',monospace}
-.wrap{max-width:1180px;margin:0 auto;padding:0 22px}
-nav.top{position:fixed;top:0;left:0;right:0;z-index:20;height:66px;display:flex;align-items:center;gap:28px;padding:0 22px;transition:background .3s,backdrop-filter .3s}
-nav.top.s{background:rgba(3,3,4,.75);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-.logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.26em;font-size:14px}.gem{width:24px;height:24px}
-nav.top .links{display:flex;gap:24px;color:var(--mut);font-size:14px}nav.top .links a:hover{color:var(--ink)}
-.sp{flex:1}
-.btn{height:46px;padding:0 22px;border-radius:999px;background:#fff;color:#000;font-weight:700;font-size:14.5px;display:inline-flex;align-items:center;gap:8px;transition:transform .15s,box-shadow .3s}
-.btn:hover{box-shadow:0 10px 40px rgba(255,255,255,.18)}.btn:active{transform:scale(.98)}
-.btn.gh{background:rgba(255,255,255,.06);color:var(--ink);border:1px solid var(--line2)}.btn.sm{height:38px;padding:0 16px;font-size:13px}
-.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 22px 60px;overflow:hidden}
-.hero:before{content:"";position:absolute;inset:0;background:radial-gradient(900px 500px at 50% 0%,rgba(231,200,115,.13),transparent 60%),radial-gradient(800px 600px at 50% 110%,#0e2a1b,transparent 70%)}
-.kick{position:relative;font:600 11.5px 'Geist Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(231,200,115,.3);padding:6px 12px;border-radius:999px}
-.hero h1{position:relative;font-size:clamp(46px,9vw,124px);font-weight:800;letter-spacing:-.06em;line-height:.9;margin:22px 0 18px;background:linear-gradient(180deg,#fff 30%,#8d8d96);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero p.lead{position:relative;color:var(--mut);font-size:clamp(15px,1.6vw,19px);max-width:600px}
-.hero .cta{position:relative;display:flex;gap:10px;margin-top:28px;flex-wrap:wrap;justify-content:center}
-.stage{position:relative;width:min(980px,96vw);aspect-ratio:2.25;margin-top:50px;perspective:1100px;transition:transform .4s ease-out}
-.ptable{position:absolute;inset:0;transform:rotateX(52deg);border-radius:999px;background:linear-gradient(180deg,#3a2a20,#120c08);padding:2.4%;box-shadow:0 80px 120px rgba(0,0,0,.9)}
-.ptable .fl{width:100%;height:100%;border-radius:999px;background:radial-gradient(ellipse at 50% 40%,#1c7a4c,#0f5132 55%,#06301d);box-shadow:inset 0 0 60px rgba(0,0,0,.5);position:relative}
-.ptable .fl:after{content:"";position:absolute;inset:9%;border-radius:999px;border:2px solid rgba(255,255,255,.08)}
-.fly{position:absolute}
-.cd{width:74px;height:104px;border-radius:9px;background:linear-gradient(180deg,#fff,#efeee9);color:#111;font:700 24px 'Geist Mono',monospace;padding:7px 8px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 20px 40px rgba(0,0,0,.5)}
-.cd .s{align-self:flex-end}.cd.red{color:#c8102e}
-.float{animation:fl 6s ease-in-out infinite}@keyframes fl{50%{transform:translateY(-12px) rotate(var(--r2,0deg))}}
-section{padding:110px 0}
-.eyebrow{font:600 11.5px 'Geist Mono',monospace;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
-h2{font-size:clamp(32px,4.6vw,58px);font-weight:700;letter-spacing:-.045em;line-height:1.02;margin:12px 0 16px}
-.sub{color:var(--mut);font-size:17px;max-width:620px}
-.feat{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:44px}
-.fc{padding:22px;border-radius:22px;border:1px solid var(--line);background:linear-gradient(180deg,#0e0e11,#08080a);transition:border-color .3s,transform .3s}
-.fc:hover{border-color:var(--line2);transform:translateY(-3px)}
-.fc svg{width:26px;height:26px;stroke:var(--gold);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.fc h3{font-size:17px;margin:16px 0 6px;letter-spacing:-.02em}.fc p{color:var(--mut);font-size:13.5px}
-.cities{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:44px}
-.city{position:relative;border-radius:24px;overflow:hidden;min-height:250px;padding:22px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid var(--line2);background:var(--b);isolation:isolate}
-.city .t{position:absolute;left:50%;top:36%;width:76%;aspect-ratio:2.1;transform:translate(-50%,-50%) perspective(600px) rotateX(50deg);border-radius:999px;background:radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--f) 100%,#fff 14%),var(--f) 55%,color-mix(in srgb,var(--f) 65%,#000));box-shadow:0 0 0 7px #1a1310,0 0 0 8px rgba(255,255,255,.12),0 30px 50px rgba(0,0,0,.7);z-index:-1}
-.city .n{font:600 11px 'Geist Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.6)}.city h3{font-size:24px;letter-spacing:-.03em;margin:2px 0 8px}
-.city .row{display:flex;justify-content:space-between;font-size:12.5px;color:rgba(255,255,255,.7)}.city .row b{color:#fff;font-family:'Geist Mono',monospace}
-.city .lk{position:absolute;top:16px;right:16px;font:600 11px 'Geist Mono',monospace;background:rgba(0,0,0,.55);border:1px solid var(--line2);padding:4px 10px;border-radius:999px}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
-.blinds{border:1px solid var(--line);border-radius:22px;overflow:hidden}
-.blinds div{display:grid;grid-template-columns:70px 1fr 1fr;padding:12px 18px;border-bottom:1px solid var(--line);font:500 13px 'Geist Mono',monospace;color:var(--mut)}.blinds div:first-child{color:var(--ink);background:rgba(255,255,255,.03);font-family:Geist;font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
-.blinds div b{color:var(--ink)}
-.pay{display:flex;gap:10px;margin-top:22px}.pay div{flex:1;padding:18px;border-radius:18px;border:1px solid var(--line);text-align:center;background:#0b0b0d}.pay b{display:block;font:700 26px 'Geist Mono',monospace;letter-spacing:-.03em}.pay span{color:var(--mut);font-size:12px}
-.pay div:first-child{border-color:rgba(231,200,115,.45)}.pay div:first-child b{color:var(--gold)}
-.lvl{display:flex;flex-direction:column;gap:8px}
-.lv{display:grid;grid-template-columns:54px 1fr auto;gap:14px;align-items:center;padding:14px 16px;border-radius:16px;border:1px solid var(--line);background:#0b0b0d}
-.lv .b{font:700 12px 'Geist Mono',monospace;background:var(--gold);color:#1a1405;border-radius:8px;padding:4px 0;text-align:center}
-.lv .bar{height:6px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:6px}.lv .bar i{display:block;height:100%;background:linear-gradient(90deg,#b8923a,var(--gold))}
-.crypto{border-radius:30px;border:1px solid var(--line2);padding:48px;background:radial-gradient(700px 300px at 85% 0%,rgba(231,200,115,.12),transparent 60%),#08080a;display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:center}
-.tok{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.tok span{font:600 12.5px 'Geist Mono',monospace;padding:8px 14px;border-radius:999px;border:1px solid var(--line2)}
-.steps{display:flex;flex-direction:column;gap:10px}.steps div{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid var(--line)}.steps b{font:700 12px 'Geist Mono',monospace;color:var(--gold);min-width:20px;margin-top:2px}.steps p{font-size:13.5px;color:var(--mut)}.steps p strong{color:var(--ink);font-weight:600;display:block}
-.faq{max-width:760px;margin:40px auto 0}.faq details{border-bottom:1px solid var(--line);padding:18px 0}.faq summary{cursor:pointer;font-weight:600;font-size:16px;list-style:none;display:flex;justify-content:space-between}.faq summary::-webkit-details-marker{display:none}.faq summary:after{content:"+";color:var(--mut)}.faq details[open] summary:after{content:"−"}.faq p{color:var(--mut);margin-top:10px;font-size:14.5px}
-.final{text-align:center;padding:140px 22px}
-footer{border-top:1px solid var(--line);padding:34px 22px;color:var(--dim);font-size:12.5px}footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
-.rv{opacity:0;transform:translateY(24px);transition:opacity .9s cubic-bezier(.2,.8,.2,1),transform .9s cubic-bezier(.2,.8,.2,1)}.rv.in{opacity:1;transform:none}
-@media (max-width:900px){.feat{grid-template-columns:1fr 1fr}.cities{grid-template-columns:1fr 1fr}.split,.crypto{grid-template-columns:1fr}.crypto{padding:28px}nav.top .links{display:none}}
-@media (max-width:560px){.feat,.cities{grid-template-columns:1fr}.cd{width:44px;height:62px;font-size:14px;padding:4px 5px}}
+:root{--g:#58bc89;--gb:#2bd47d}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#000;color:#fff;font:500 16px/1.4 Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+a{color:inherit;text-decoration:none}
+body:before{content:"";position:fixed;inset:0;background:radial-gradient(900px 380px at 50% -8%,rgba(88,188,137,.32),rgba(88,188,137,.06) 45%,transparent 70%);pointer-events:none}
+.top{position:relative;z-index:2;max-width:430px;margin:0 auto;height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+.logo{display:flex;align-items:center;gap:9px;font:700 18px Unbounded;letter-spacing:.12em}
+.eye{width:26px;height:26px;filter:drop-shadow(0 0 10px rgba(43,212,125,.6))}
+.pill{font-size:13px;font-weight:700;color:var(--g);background:rgba(88,188,137,.1);border:1px solid rgba(88,188,137,.35);padding:5px 12px;border-radius:999px;transition:background .2s}
+.pill:hover{background:rgba(88,188,137,.18)}
+.stage{position:relative;z-index:1;height:calc(100% - 76px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 20px 40px}
+.row{display:flex;align-items:center;gap:18px}
+.lead{font-size:clamp(26px,3.4vw,34px);font-weight:600;letter-spacing:-.02em;white-space:nowrap}
+.tick{position:relative;height:280px;width:clamp(230px,30vw,300px);overflow:hidden;-webkit-mask:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent);mask:linear-gradient(180deg,transparent,#000 30%,#000 70%,transparent)}
+.rail{position:absolute;left:0;top:0;transition:transform .7s cubic-bezier(.65,0,.35,1)}
+.it{height:56px;display:flex;align-items:center;gap:12px;font-size:clamp(24px,3vw,31px);font-weight:600;letter-spacing:-.02em;color:rgba(255,255,255,.28);transition:color .5s,opacity .5s;white-space:nowrap}
+.it.on{color:#fff}
+.mini{display:flex;flex:none}.mini span{width:20px;height:28px;border-radius:4px;background:#fff;color:#111;font:700 11px Manrope;display:flex;align-items:flex-start;justify-content:flex-start;padding:2px 3px;box-shadow:0 4px 10px rgba(0,0,0,.4)}.mini span+span{margin-left:-8px;transform:rotate(8deg)}
+.mini span.r{color:#e11d48}.it:not(.on) .mini{opacity:.35}
+.sub{margin-top:34px;font-size:15px;color:rgba(255,255,255,.85)}.sub b{font-weight:800;color:#fff}
+.btns{display:flex;flex-direction:column;gap:12px;width:min(400px,100%);margin-top:18px}
+.btn{height:50px;border-radius:999px;background:#fff;color:#000;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s,box-shadow .3s}
+.btn:hover{box-shadow:0 10px 40px rgba(255,255,255,.18)}.btn:active{transform:scale(.985)}.btn svg{width:18px;height:18px}
+.alt{margin-top:18px;font-size:14px;color:rgba(255,255,255,.7)}.alt a{color:#fff;font-weight:800}
+.foot{position:fixed;left:0;right:0;bottom:14px;text-align:center;font-size:11.5px;color:rgba(255,255,255,.3);z-index:2}
+@media (max-width:640px){.row{flex-direction:column;gap:6px}.tick{height:230px;width:250px}.lead{font-size:26px}}
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b6b75"/><stop offset=".5" stop-color="#16161a"/><stop offset="1" stop-color="#000"/></linearGradient>
-<symbol id="gem" viewBox="0 0 24 24"><path d="M12 1.5l7.5 5.5-2.8 14.5H7.3L4.5 7z" fill="url(#gg)" stroke="rgba(255,255,255,.55)" stroke-width=".8"/><path d="M4.5 7h15M12 1.5L8.6 7l3.4 14.5L15.4 7z" fill="none" stroke="rgba(255,255,255,.35)" stroke-width=".7"/></symbol></defs></svg>
-
-<nav class="top" id="nav"><a class="logo" href="./"><svg class="gem"><use href="#gem"/></svg>OBSIDIAN</a>
- <div class="links"><a href="#rooms">rooms</a><a href="#tournaments">tournaments</a><a href="#levels">levels</a><a href="#crypto">crypto</a><a href="#faq">faq</a></div><span class="sp"></span><a class="btn sm" href="app.html">play now</a></nav>
-
-<header class="hero">
- <span class="kick">texas hold'em · 9 seats</span>
- <h1>OBSIDIAN</h1>
- <p class="lead">the poker room you carry in your pocket. private tables with your friends, Sit &amp; Go tournaments and six cities to climb, from a cantina in Morelia to Monaco.</p>
- <div class="cta"><a class="btn" href="app.html">play free</a><a class="btn gh" href="app.html#tourneys">create a tournament</a></div>
- <div class="stage" id="stage">
-  <div class="ptable"><div class="fl"></div></div>
-  <div class="fly float" style="left:30%;top:18%;--r2:-4deg"><div class="cd"><span>A</span><span class="s">♠&#xFE0E;</span></div></div>
-  <div class="fly float" style="left:39.5%;top:12%;animation-delay:-1s;--r2:3deg"><div class="cd red"><span>K</span><span class="s">♥&#xFE0E;</span></div></div>
-  <div class="fly float" style="left:49%;top:16%;animation-delay:-2s;--r2:-2deg"><div class="cd red"><span>Q</span><span class="s">♦&#xFE0E;</span></div></div>
-  <div class="fly float" style="left:58.5%;top:10%;animation-delay:-3s;--r2:4deg"><div class="cd"><span>J</span><span class="s">♣&#xFE0E;</span></div></div>
-  <div class="fly float" style="left:68%;top:20%;animation-delay:-4s;--r2:-3deg"><div class="cd red"><span>10</span><span class="s">♥&#xFE0E;</span></div></div>
-  <div class="fly float" id="chips" style="left:44%;top:60%;width:120px;height:80px;animation-delay:-2.5s"></div>
+<svg width="0" height="0" style="position:absolute"><defs>
+ <radialGradient id="eg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#d9ffe9"/><stop offset=".45" stop-color="#2bd47d"/><stop offset="1" stop-color="#0b5a33"/></radialGradient>
+ <symbol id="eye" viewBox="0 0 32 32"><path d="M2 16C6 8.5 11 5 16 5s10 3.5 14 11c-4 7.5-9 11-14 11S6 23.5 2 16z" fill="none" stroke="#2bd47d" stroke-width="1.8"/><circle cx="16" cy="16" r="6.2" fill="url(#eg)"/><path d="M16 11.2l1.3 3.5 3.5 1.3-3.5 1.3-1.3 3.5-1.3-3.5-3.5-1.3 3.5-1.3z" fill="#03130a"/></symbol>
+</defs></svg>
+<header class="top"><a class="logo" href="./"><svg class="eye"><use href="#eye"/></svg>SIXTH</a><a class="pill" href="app.html#tourneys">tournaments</a></header>
+<main class="stage">
+ <div class="row"><span class="lead">Win with</span><div class="tick"><div class="rail" id="rail"></div></div></div>
+ <p class="sub">and Sit &amp; Go tournaments up to <b>1M coins</b>!</p>
+ <div class="btns">
+  <a class="btn" href="app.html"><svg viewBox="0 0 32 32"><use href="#eye"/></svg>Play free</a>
+  <a class="btn" href="app.html#play"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Create a private table</a>
  </div>
-</header>
-
-<section><div class="wrap">
- <div class="eyebrow rv">the room</div><h2 class="rv">everything a real table has.<br>nothing it doesn’t need.</h2>
- <div class="feat">
-  <div class="fc rv"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg><h3>private tables</h3><p>create a table, send the link. only people with the code can sit. up to 9 players.</p></div>
-  <div class="fc rv"><svg viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 01-8 0zM6 5H3a3 3 0 003 4M18 5h3a3 3 0 01-3 4M12 12v4M8 20h8M10 16h4v4h-4z"/></svg><h3>Sit &amp; Go tournaments</h3><p>everyone starts even, blinds rise every few minutes and the top 3 split the prize pool.</p></div>
-  <div class="fc rv"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg><h3>your profile</h3><p>your photo at the table, your level, your stats: hands, pots won, biggest pot, titles.</p></div>
-  <div class="fc rv"><svg viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg><h3>cards nobody else sees</h3><p>your two cards travel encrypted only to you. not even someone watching the connection can read them.</p></div>
- </div>
-</div></section>
-
-<section id="rooms" style="padding-top:40px"><div class="wrap">
- <div class="eyebrow rv">six rooms</div><h2 class="rv">start in a cantina.<br>finish in Monaco.</h2><p class="sub rv">every city is a new table: higher blinds, bigger pots. win coins, level up and the next room opens.</p>
- <div class="cities" id="cities"></div>
-</div></section>
-
-<section id="tournaments"><div class="wrap split">
- <div><div class="eyebrow rv">tournaments</div><h2 class="rv">nine players.<br>one winner.</h2><p class="sub rv">pick the entry, the starting stack and how fast the blinds rise. share the link, and the tournament starts once the table is ready.</p>
-  <div class="pay rv"><div><b>50%</b><span>1st place</span></div><div><b>30%</b><span>2nd place</span></div><div><b>20%</b><span>3rd place</span></div></div>
-  <p class="rv" style="color:var(--dim);font-size:13px;margin-top:12px">the prize pool is every entry added together. entries from 1K to 1M coins.</p></div>
- <div class="blinds rv"><div><span>level</span><span>blinds</span><span>3,000 stack</span></div><div><b>1</b><span>20 / 40</span><span>75 bb</span></div><div><b>2</b><span>30 / 60</span><span>50 bb</span></div><div><b>3</b><span>40 / 80</span><span>37 bb</span></div><div><b>4</b><span>60 / 120</span><span>25 bb</span></div><div><b>6</b><span>120 / 240</span><span>12 bb</span></div><div><b>8</b><span>240 / 480</span><span>6 bb</span></div><div><b>10</b><span>480 / 960</span><span>3 bb</span></div></div>
-</div></section>
-
-<section id="levels"><div class="wrap split">
- <div class="lvl rv">
-  <div class="lv"><span class="b">LV 1</span><div><div style="font-size:13.5px;font-weight:600">Morelia · La Cantina</div><div class="bar"><i style="width:100%"></i></div></div><span class="m" style="color:var(--mut);font-size:12px">5/10</span></div>
-  <div class="lv"><span class="b">LV 3</span><div><div style="font-size:13.5px;font-weight:600">Mexico City · Polanco Room</div><div class="bar"><i style="width:70%"></i></div></div><span class="m" style="color:var(--mut);font-size:12px">25/50</span></div>
-  <div class="lv"><span class="b">LV 6</span><div><div style="font-size:13.5px;font-weight:600">Monterrey · Sierra Club</div><div class="bar"><i style="width:40%"></i></div></div><span class="m" style="color:var(--mut);font-size:12px">100/200</span></div>
-  <div class="lv"><span class="b">LV 10</span><div><div style="font-size:13.5px;font-weight:600">Las Vegas · High Stakes</div><div class="bar"><i style="width:18%"></i></div></div><span class="m" style="color:var(--mut);font-size:12px">500/1K</span></div>
-  <div class="lv" style="opacity:.6"><span class="b">LV 20</span><div><div style="font-size:13.5px;font-weight:600">Monaco · Le Prince</div><div class="bar"><i style="width:3%"></i></div></div><span class="m" style="color:var(--mut);font-size:12px">10K/20K</span></div>
- </div>
- <div><div class="eyebrow rv">levels</div><h2 class="rv">every hand<br>moves you forward.</h2><p class="sub rv">you earn experience for every hand you play, more for every pot you win and a lot for every tournament you cash. level up to unlock the next city.</p>
-  <p class="sub rv" style="margin-top:14px">you start with 10,000 coins and get 2,000 more every day.</p></div>
-</div></section>
-
-<section id="crypto" style="padding-top:20px"><div class="wrap"><div class="crypto rv">
- <div><div class="eyebrow">crypto</div><h2 style="font-size:clamp(28px,3.6vw,46px)">real stakes in crypto.<br>only where it’s legal.</h2>
-  <p class="sub">today OBSIDIAN is played with free coins that have no cash value. tables with USDC and SOL will open only in countries where we hold a gaming license, with identity checks and audited card dealing.</p>
-  <div class="tok"><span>USDC</span><span>SOL</span><span>ETH</span></div></div>
- <div class="steps">
-  <div><b>01</b><p><strong>license</strong>online poker for money needs a gaming license in each country where it’s offered.</p></div>
-  <div><b>02</b><p><strong>certified dealing</strong>the shuffle is audited by an independent lab and runs on our servers, not on any player’s device.</p></div>
-  <div><b>03</b><p><strong>your money, protected</strong>player balances kept apart from the company’s money, with identity checks against fraud.</p></div>
- </div>
-</div></div></section>
-
-<section id="faq" style="padding-top:20px"><div class="wrap">
- <div class="eyebrow rv" style="text-align:center">questions</div><h2 class="rv" style="text-align:center">before you sit down</h2>
- <div class="faq">
-  <details><summary>is it free?</summary><p>yes. you play with coins that can’t be bought, sold or cashed out. you get 10,000 to start and 2,000 more each day.</p></details>
-  <details><summary>how do I play with my friends?</summary><p>open play, create a private table and send the link or the 6-letter code. whoever opens it can take a seat.</p></details>
-  <details><summary>who deals the cards?</summary><p>today the shuffle runs on the device of whoever created the table, and each player gets their cards encrypted. tables with real money will deal from audited servers.</p></details>
-  <details><summary>does it work on my phone?</summary><p>yes. it opens in the browser on your phone or computer, no download.</p></details>
-  <details><summary>when do crypto tables open?</summary><p>only once we hold a license in your country. we won’t open real-money tables before that.</p></details>
- </div>
-</div></section>
-
-<div class="final"><h2 class="rv">your seat is waiting.</h2><div style="margin-top:24px" class="rv"><a class="btn" href="app.html">play free</a></div></div>
-<footer><div class="wrap"><span>© 2026 OBSIDIAN · play coins have no cash value · 18+</span><span>texas hold'em · private tables · Sit &amp; Go</span></div></footer>
-
+ <p class="alt">Got a code? <a href="app.html#play">Join a table</a></p>
+</main>
+<div class="foot">texas hold'em · 9 seats · play coins have no cash value · 18+</div>
 <script>
-const V=[['Morelia','La Cantina','5/10','500',1,'#0f5132','#06110b','#0e2a1b'],['Mexico City','Polanco Room','25/50','2.5K',3,'#173a7a','#050a17','#0d1d3d'],['Monterrey','Sierra Club','100/200','10K',6,'#6e1a1a','#120505','#2b0d0d'],['Las Vegas','High Stakes','500/1K','50K',10,'#43207a','#0b0517','#1f0e3b'],['Macau','Dragon Room','2.5K/5K','250K',15,'#7a3410','#130804','#33150a'],['Monaco','Le Prince','10K/20K','1M',20,'#1c2430','#030405','#10161e']];
-document.getElementById('cities').innerHTML=V.map(v=>`<div class="city rv" style="--b:radial-gradient(500px 300px at 50% 20%,${v[7]},${v[6]});--f:${v[5]}"><div class="t"></div>${v[4]>1?`<span class="lk">level ${v[4]}</span>`:''}<div class="n">${v[0]}</div><h3>${v[1]}</h3><div class="row"><span>blinds <b>${v[2]}</b></span><span>buy-in <b>${v[3]}</b></span></div></div>`).join('');
-const chip=(c,d)=>`<svg viewBox="0 0 20 20" width="34" height="34"><ellipse cx="10" cy="11.4" rx="9.2" ry="5.6" fill="${d}"/><ellipse cx="10" cy="9.6" rx="9.2" ry="5.6" fill="${c}"/><ellipse cx="10" cy="9.6" rx="6.4" ry="3.8" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="1.1" stroke-dasharray="2.2 1.6"/></svg>`;
-document.getElementById('chips').innerHTML=[['#111','#555',7],['#e7c873','#7a5a12',9],['#ef4444','#7f1d1d',5]].map(([c,d,k],j)=>`<span style="position:absolute;left:${j*38}px;bottom:0;width:34px;height:${34+k*5}px">${Array.from({length:k},(_,i)=>`<span style="position:absolute;bottom:${i*5}px;left:0;width:34px;height:34px">${chip(c,d)}</span>`).join('')}</span>`).join('');
-const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});document.querySelectorAll('.rv').forEach(el=>io.observe(el));
-addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('s',scrollY>20),{passive:true});
-const stg=document.getElementById('stage');addEventListener('mousemove',e=>{const x=(e.clientX/innerWidth-.5)*6,y=(e.clientY/innerHeight-.5)*4;stg.style.transform=`rotateY(${x}deg) rotateX(${-y}deg)`},{passive:true});
+const H=[['Pocket Aces',[['A','♠'],['A','♥',1]]],['Royal Flush',[['K','♠'],['A','♠']]],['Full House',[['Q','♦',1],['Q','♣']]],['Four Kings',[['K','♥',1],['K','♦',1]]],['Big Bluffs',[['7','♣'],['2','♦',1]]],['Suited Connectors',[['9','♥',1],['10','♥',1]]],['The River',[['J','♠'],['J','♦',1]]]];
+const L=[...H,...H,...H],rail=document.getElementById('rail');
+rail.innerHTML=L.map(([n,c])=>`<div class="it"><span class="mini">${c.map(([r,s,red])=>`<span class="${red?'r':''}">${r}${s}&#xFE0E;</span>`).join('')}</span>${n}</div>`).join('');
+const items=[...rail.children],ITEM=56;let i=H.length;
+function go(anim=true){rail.style.transition=anim?'':'none';rail.style.transform=`translateY(${(rail.parentElement.clientHeight/2-ITEM/2)-i*ITEM}px)`;items.forEach((e,k)=>e.classList.toggle('on',k===i))}
+go(false);setInterval(()=>{i++;go();if(i>=H.length*2){setTimeout(()=>{i-=H.length;go(false)},750)}},1800);
+addEventListener('resize',()=>go(false));
 </script>
 </body>
 </html>
